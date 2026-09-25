@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+/* 아직 명확한 디자인 시스템은 없으니 나오면 추가하겠습니다 */
+
+:root {
+  font-family:
+    Pretendard,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  color: #ffffff;
+  background: #09060f;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+
+  --color-background: #09060f;
+  --color-surface: #15101e;
+  --color-surface-secondary: #1d1628;
+
+  --color-primary: #9b63ff;
+  --color-primary-light: #bd91ff;
+  --color-primary-dark: #6e39c7;
+
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #aaa1b7;
+  --color-text-tertiary: #716a7d;
+
+  --color-border: #2b2435;
+
+  --radius-small: 8px;
+  --radius-medium: 16px;
+  --radius-large: 24px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+html {
+  background: var(--color-background);
+}
+
+body {
+  min-height: 100vh;
+  background: var(--color-background);
+  color: var(--color-text-primary);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
