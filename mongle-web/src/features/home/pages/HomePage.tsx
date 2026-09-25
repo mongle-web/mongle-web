@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 import homeAd from '@/assets/images/home/home_ad.png';
 import homeLink from '@/assets/images/home/home_link.png';
@@ -12,19 +11,7 @@ import RecordMethodSheet from '@/features/home/components/RecordMethodSheet';
 import { recentDreams } from '@/features/home/mocks/homeMockData';
 
 function HomePage() {
-  const navigate = useNavigate();
-
   const [isRecordSheetOpen, setIsRecordSheetOpen] = useState(false);
-
-  const handleVoiceRecord = () => {
-    setIsRecordSheetOpen(false);
-    navigate('/dream/record/voice');
-  };
-
-  const handleTextRecord = () => {
-    setIsRecordSheetOpen(false);
-    navigate('/dream/record/text');
-  };
 
   return (
     <>
@@ -93,12 +80,7 @@ function HomePage() {
 
       <BottomNavigation onAddClick={() => setIsRecordSheetOpen(true)} />
 
-      <RecordMethodSheet
-        isOpen={isRecordSheetOpen}
-        onClose={() => setIsRecordSheetOpen(false)}
-        onVoiceClick={handleVoiceRecord}
-        onTextClick={handleTextRecord}
-      />
+      <RecordMethodSheet isOpen={isRecordSheetOpen} onClose={() => setIsRecordSheetOpen(false)} />
     </>
   );
 }
