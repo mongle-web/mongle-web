@@ -10,41 +10,59 @@
     'Segoe UI',
     sans-serif;
 
-  color: #ffffff;
-  background: #09060f;
+  color: #f7f5fa;
+  background: #09070d;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 
-  --color-background: #09060f;
-  --color-surface: #15101e;
-  --color-surface-secondary: #1d1628;
+  /* Background */
+  --color-background: #09070d;
+  --color-surface: #120f18;
+  --color-surface-elevated: #1a1621;
 
-  --color-primary: #9b63ff;
-  --color-primary-light: #bd91ff;
-  --color-primary-dark: #6e39c7;
+  /* Brand */
+  --color-primary: #9b5cff;
+  --color-primary-hover: #ab78ff;
+  --color-primary-active: #8445e8;
+  --color-primary-soft: rgba(155, 92, 255, 0.14);
 
-  --color-text-primary: #ffffff;
-  --color-text-secondary: #aaa1b7;
-  --color-text-tertiary: #716a7d;
+  /* Text */
+  --color-text-primary: #f7f5fa;
+  --color-text-secondary: #aaa3b5;
+  --color-text-tertiary: #716a7b;
+  --color-text-disabled: #4f4957;
 
-  --color-border: #2b2435;
+  /* Border */
+  --color-border: #27222f;
+  --color-border-strong: #393142;
 
-  --radius-small: 8px;
-  --radius-medium: 16px;
-  --radius-large: 24px;
+  /* State */
+  --color-success: #49c58f;
+  --color-warning: #f5b942;
+  --color-error: #ff667c;
+
+  /* Radius */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* Shadow */
+  --shadow-card: 0 8px 30px rgba(0, 0, 0, 0.22);
+  --shadow-primary: 0 8px 28px rgba(155, 92, 255, 0.22);
+
+  /* Layout */
+  --app-max-width: 480px;
+  --page-horizontal-padding: 20px;
 }
 
 * {
   box-sizing: border-box;
-}
-
-html,
-body,
-#root {
-  min-width: 320px;
-  min-height: 100%;
-  margin: 0;
 }
 
 html {
@@ -52,19 +70,28 @@ html {
 }
 
 body {
+  min-width: 320px;
   min-height: 100vh;
-  background: var(--color-background);
+  margin: 0;
+
   color: var(--color-text-primary);
+  background: var(--color-background);
 }
 
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
 }
 
 button {
-  cursor: pointer;
+  border: 0;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
 }
 
 a {
@@ -75,4 +102,8 @@ a {
 img {
   display: block;
   max-width: 100%;
+}
+
+#root {
+  min-height: 100vh;
 }

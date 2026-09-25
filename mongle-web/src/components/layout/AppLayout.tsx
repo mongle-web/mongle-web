@@ -1,11 +1,13 @@
-import { Outlet } from 'react-router-dom';
+import type { ReactNode } from 'react';
 
-function AppLayout() {
+interface AppLayoutProps {
+  children: ReactNode;
+}
+
+function AppLayout({ children }: AppLayoutProps) {
   return (
-    <div className="min-h-screen bg-[#09060f] text-white">
-      <main className="mx-auto min-h-screen w-full max-w-[480px]">
-        <Outlet />
-      </main>
+    <div className="min-h-screen bg-[#09070D]">
+      <main className="mx-auto min-h-screen w-full max-w-[480px] bg-[#09070D]">{children}</main>
     </div>
   );
 }
