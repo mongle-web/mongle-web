@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* 아직 명확한 디자인 시스템은 없으니 나오면 추가하겠습니다 */
 
@@ -7,7 +7,7 @@
     Pretendard,
     -apple-system,
     BlinkMacSystemFont,
-    "Segoe UI",
+    'Segoe UI',
     sans-serif;
 
   color: #ffffff;

@@ -9,10 +9,7 @@ function HomePage() {
         꿈을 기록하고 나만의 Dream World를 만들어보세요.
       </p>
 
-      <button
-        type="button"
-        className="rounded-2xl bg-[#9b63ff] px-6 py-3 font-semibold text-white"
-      >
+      <button type="button" className="rounded-2xl bg-[#9b63ff] px-6 py-3 font-semibold text-white">
         꿈 기록하기
       </button>
     </div>
