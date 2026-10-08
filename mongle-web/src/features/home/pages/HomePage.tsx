@@ -16,7 +16,14 @@ function HomePage() {
 
   return (
     <>
-      <div className="min-h-screen bg-[#09070D] px-4 pt-5 pb-28">
+      {/* isolate: 배경색(b-900) → 보라색 빛(-z-10) → 콘텐츠 순서로 쌓이도록 별도 레이어 생성 */}
+      <div className="relative isolate min-h-screen bg-b-900 px-4 pt-5 pb-28">
+        {/* 상단 보라색 빛 (화면 높이 기준 크기, 스크롤해도 화면 위쪽에 고정) */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed inset-x-0 top-0 -z-10 mx-auto h-screen w-full max-w-[480px] bg-radial-[92.2%_47.65%_at_50%_0%] from-p-500/40 to-p-500/0"
+        />
+
         <header className="mb-6 flex items-center justify-between">
           <span className="text-[16px] font-medium tracking-[-0.02em] text-[#F7F5FA]">logo</span>
 
