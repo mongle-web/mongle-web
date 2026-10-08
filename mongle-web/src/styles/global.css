@@ -1,6 +1,30 @@
 @import 'tailwindcss';
 
-/* 아직 명확한 디자인 시스템은 없으니 나오면 추가하겠습니다 */
+/* 디자인 시스템 색상 팔레트 */
+/* 투명도가 필요한 경우 bg-b-800/80 처럼 사용 */
+@theme {
+  /* Black (Gray) */
+  --color-b-900: #1e1d27;
+  --color-b-800: #323237; /* 디자인에서 opacity(투명도) 0.8과 함께 사용 */
+  --color-b-600: #737377;
+  --color-b-400: #a9a9ae;
+  --color-b-300: #ceced2;
+  --color-b-200: #ededf0;
+
+  /* Neutral */
+  --color-n-900: #292834;
+  --color-n-800: #413e58;
+  --color-n-300: #bebbdb;
+  --color-n-200: #cecce2;
+
+  /* Purple */
+  --color-p-900: #35305b;
+  --color-p-500: #7a6ce3;
+  --color-p-300: #bcb3ff;
+  --color-p-100: #e7e4ff;
+}
+
+/* 아래는 초기 임시 색상 (기존 화면 유지용, 추후 디자인 팔레트로 교체 예정) */
 
 :root {
   font-family:

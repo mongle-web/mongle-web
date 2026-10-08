@@ -10,6 +10,10 @@ import RecentDreamCard from '@/features/home/components/RecentDreamCard';
 import RecordMethodSheet from '@/features/home/components/RecordMethodSheet';
 import { recentDreams } from '@/features/home/mocks/homeMockData';
 
+// [TEMP] 컴포넌트 미리보기 START - 확인 후 이 블록 삭제
+import { Button, Input } from '@/components/common';
+// [TEMP] 컴포넌트 미리보기 END
+
 function HomePage() {
   const [isRecordSheetOpen, setIsRecordSheetOpen] = useState(false);
 
