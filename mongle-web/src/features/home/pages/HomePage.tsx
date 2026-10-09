@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useNavigate } from 'react-router-dom';
 
 import homeAd from '@/assets/images/home/home_ad.png';
 import homeLink from '@/assets/images/home/home_link.png';
@@ -8,31 +9,36 @@ import HomeHeroCard from '@/features/home/components/HomeHeroCard';
 import QuickActionCard from '@/features/home/components/QuickActionCard';
 import RecentDreamCard from '@/features/home/components/RecentDreamCard';
 import RecordButton from '@/features/home/components/RecordButton';
-import RecordMethodSheet from '@/features/home/components/RecordMethodSheet';
 import { recentDreams } from '@/features/home/mocks/homeMockData';
 
 function HomePage() {
-  const [isRecordSheetOpen, setIsRecordSheetOpen] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <>
-      {/* isolate: 배경색(b-900) → 보라색 빛(-z-10) → 콘텐츠 순서로 쌓이도록 별도 레이어 생성 */}
       <div className="relative isolate min-h-screen bg-b-900 px-4 pt-5 pb-28">
-        {/* 상단 보라색 빛 (화면 높이 기준 크기, 스크롤해도 화면 위쪽에 고정) */}
+        {/* 상단 배경 빛 */}
         <div
           aria-hidden="true"
           className="pointer-events-none fixed inset-x-0 top-0 -z-10 mx-auto h-screen w-full max-w-[480px] bg-radial-[92.2%_47.65%_at_50%_0%] from-p-500/40 to-p-500/0"
         />
 
+        {/* 헤더 */}
         <header className="mb-6 flex items-center justify-between">
-          <span className="text-[16px] font-medium tracking-[-0.02em] text-[#F7F5FA]">logo</span>
+          <span className="text-[16px] font-medium tracking-[-0.02em] text-[#F7F5FA]">
+            logo
+          </span>
 
           <button
             type="button"
             aria-label="프로필"
             className="flex h-9 w-9 items-center justify-center text-[#D3CEDD]"
           >
-            <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="currentColor">
+            <svg
+              viewBox="0 0 24 24"
+              className="h-[22px] w-[22px]"
+              fill="currentColor"
+            >
               <circle cx="12" cy="8" r="4" />
               <path d="M5 20c0-4 3-7 7-7s7 3 7 7v1H5z" />
             </svg>
@@ -41,6 +47,7 @@ function HomePage() {
 
         <HomeHeroCard />
 
+        {/* 주요 기능 */}
         <section className="mt-4 flex flex-col gap-2">
           <QuickActionCard
             title="꿈의 연결고리 찾기"
@@ -57,9 +64,12 @@ function HomePage() {
           />
         </section>
 
+        {/* 최근 꿈 */}
         <section className="mt-5">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-[14px] font-semibold text-[#F7F5FA]">지난 꿈 돌아보기</h2>
+            <h2 className="text-[14px] font-semibold text-[#F7F5FA]">
+              지난 꿈 돌아보기
+            </h2>
 
             <button
               type="button"
@@ -88,9 +98,8 @@ function HomePage() {
 
       <BottomNavigation />
 
-      <RecordButton onClick={() => setIsRecordSheetOpen(true)} />
-
-      <RecordMethodSheet isOpen={isRecordSheetOpen} onClose={() => setIsRecordSheetOpen(false)} />
+      {/* 음성/텍스트 선택 단계 없이 기록 화면으로 직접 이동 */}
+      <RecordButton onClick={() => navigate('/dreams/new')} />
     </>
   );
 }
