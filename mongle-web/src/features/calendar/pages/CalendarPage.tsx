@@ -4,13 +4,17 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 import chevronIcon from '@/assets/icons/calendar/chevron.svg';
+import profileIcon from '@/assets/icons/common/profile.svg';
 import AddDreamButton from '@/features/calendar/components/AddDreamButton';
+import CalendarDialog from '@/features/calendar/components/CalendarDialog';
 import CalendarGrid from '@/features/calendar/components/CalendarGrid';
 import CalendarHero from '@/features/calendar/components/CalendarHero';
 import DreamSummaryCard from '@/features/calendar/components/DreamSummaryCard';
 import MonthNavigator from '@/features/calendar/components/MonthNavigator';
+import YearMonthPickerDialog from '@/features/calendar/components/YearMonthPickerDialog';
+import { useDeleteDream } from '@/features/calendar/hooks/useDeleteDream';
 import { useMonthlyDreams } from '@/features/calendar/hooks/useMonthlyDreams';
-import type { CalendarDay } from '@/features/calendar/types/calendar';
+import type { CalendarDay, CalendarDream } from '@/features/calendar/types/calendar';
 import { getCalendarDays, isSameMonth, toDateKey } from '@/features/calendar/utils/calendar';
 import BottomNavigation from '@/features/home/components/BottomNavigation';
 
@@ -25,6 +29,12 @@ function CalendarPage() {
 
   // 선택한 날짜 ('YYYY-MM-DD'), 선택 안 했으면 null
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
+
+  // 열려 있는 창: 날짜 선택 창 여부 / 삭제하려는 꿈
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [dreamToDelete, setDreamToDelete] = useState<CalendarDream | null>(null);
+
+  const deleteDreamMutation = useDeleteDream();
 
   const {
     data: dreams = [],
@@ -52,6 +62,29 @@ function CalendarPage() {
     setMonth((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
   };
 
+  const handlePickMonth = (nextMonth: Date) => {
+    setSelectedDateKey(null);
+    setMonth(nextMonth);
+    setIsPickerOpen(false);
+  };
+
+  const closeDeleteDialog = () => {
+    deleteDreamMutation.reset(); // 이전 실패 메시지 지우기
+    setDreamToDelete(null);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!dreamToDelete) return;
+
+    deleteDreamMutation.mutate(dreamToDelete.id, {
+      onSuccess: () => {
+        // 삭제한 꿈 카드를 닫고 캘린더를 다시 펼친다
+        setSelectedDateKey(null);
+        setDreamToDelete(null);
+      },
+    });
+  };
+
   const handleDayClick = (day: CalendarDay) => {
     // 이미 선택한 빈 날짜를 다시 누르면 선택 해제
     if (!day.dream && day.dateKey === selectedDateKey) {
@@ -72,20 +105,14 @@ function CalendarPage() {
   return (
     <>
       {/* 캐릭터 빛 번짐이 화면 오른쪽 밖으로 나가도 가로 스크롤이 생기지 않게 overflow-x-clip */}
-      <div className="min-h-screen overflow-x-clip bg-b-900 px-5 pt-5 pb-28">
-        {/* 헤더 */}
-        <header className="mb-6 flex items-center justify-between">
-          <span className="text-[20px] text-b-200">logo</span>
+      <div className="min-h-screen overflow-x-clip bg-b-900 px-5 pt-[14px] pb-28">
+        {/* 헤더 (피그마: 로고 · 프로필 아이콘 높이 24, 아래 문구까지 33px) */}
+        <header className="mb-[33px] flex h-6 items-center justify-between">
+          <span className="text-[20px] leading-6 text-b-200">logo</span>
 
-          <button
-            type="button"
-            aria-label="프로필"
-            className="flex h-9 w-9 items-center justify-center text-[#D3CEDD]"
-          >
-            <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="currentColor">
-              <circle cx="12" cy="8" r="4" />
-              <path d="M5 20c0-4 3-7 7-7s7 3 7 7v1H5z" />
-            </svg>
+          {/* TODO: 마이페이지가 생기면 이동 연결 */}
+          <button type="button" aria-label="프로필" className="size-6 cursor-pointer">
+            <img src={profileIcon} alt="" className="size-6" />
           </button>
         </header>
 
@@ -97,6 +124,7 @@ function CalendarPage() {
               month={month}
               onPrev={() => changeMonth(-1)}
               onNext={() => changeMonth(1)}
+              onTitleClick={() => setIsPickerOpen(true)}
             />
 
             {canAddDream && <AddDreamButton onClick={handleAddDream} />}
@@ -150,8 +178,7 @@ function CalendarPage() {
                   transition={{ duration: 0.2 }}
                   className="mt-3"
                 >
-                  {/* TODO: 3단계에서 삭제 확인 모달 연결 */}
-                  <DreamSummaryCard dream={selectedDream} />
+                  <DreamSummaryCard dream={selectedDream} onDelete={setDreamToDelete} />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -160,6 +187,34 @@ function CalendarPage() {
       </div>
 
       <BottomNavigation />
+
+      <AnimatePresence>
+        {isPickerOpen && (
+          <YearMonthPickerDialog
+            key="year-month-picker"
+            initialMonth={month}
+            onCancel={() => setIsPickerOpen(false)}
+            onConfirm={handlePickMonth}
+          />
+        )}
+
+        {dreamToDelete && (
+          <CalendarDialog
+            key="delete-dream"
+            title="정말 꿈을 삭제할까요?"
+            confirmLabel={deleteDreamMutation.isPending ? '삭제 중...' : '삭제'}
+            isConfirmDisabled={deleteDreamMutation.isPending}
+            onCancel={closeDeleteDialog}
+            onConfirm={handleDeleteConfirm}
+          >
+            <p className="w-full text-[14px] leading-[1.5] font-medium text-b-400">
+              {deleteDreamMutation.isError
+                ? '삭제하지 못했어요. 다시 시도해 주세요.'
+                : '삭제하면 다시 되돌릴 수 없어요.'}
+            </p>
+          </CalendarDialog>
+        )}
+      </AnimatePresence>
     </>
   );
 }

@@ -16,3 +16,15 @@ export const getMonthlyDreams = async (year: number, month: number): Promise<Cal
 
   return calendarMockDreams.filter((dream) => dream.date.startsWith(monthPrefix));
 };
+
+// 꿈 삭제
+// TODO: 백엔드 API가 나오면 아래 Mock 부분을 지우고 주석 처리된 코드로 교체
+//   await apiClient.delete(`/dreams/${dreamId}`);
+export const deleteDream = async (dreamId: number): Promise<void> => {
+  await new Promise((resolve) => setTimeout(resolve, 300));
+
+  const index = calendarMockDreams.findIndex((dream) => dream.id === dreamId);
+  if (index === -1) throw new Error('삭제할 꿈을 찾지 못했어요.');
+
+  calendarMockDreams.splice(index, 1);
+};
