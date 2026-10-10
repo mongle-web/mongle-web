@@ -1,18 +1,30 @@
 import { useState } from 'react';
 
+import { AnimatePresence, motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+
+import chevronIcon from '@/assets/icons/calendar/chevron.svg';
+import AddDreamButton from '@/features/calendar/components/AddDreamButton';
 import CalendarGrid from '@/features/calendar/components/CalendarGrid';
 import CalendarHero from '@/features/calendar/components/CalendarHero';
+import DreamSummaryCard from '@/features/calendar/components/DreamSummaryCard';
 import MonthNavigator from '@/features/calendar/components/MonthNavigator';
 import { useMonthlyDreams } from '@/features/calendar/hooks/useMonthlyDreams';
-import { getCalendarDays, isSameMonth } from '@/features/calendar/utils/calendar';
+import type { CalendarDay } from '@/features/calendar/types/calendar';
+import { getCalendarDays, isSameMonth, toDateKey } from '@/features/calendar/utils/calendar';
 import BottomNavigation from '@/features/home/components/BottomNavigation';
 
 function CalendarPage() {
+  const navigate = useNavigate();
+
   // 표시 중인 달 (항상 1일로 저장)
   const [month, setMonth] = useState(() => {
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), 1);
   });
+
+  // 선택한 날짜 ('YYYY-MM-DD'), 선택 안 했으면 null
+  const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
 
   const {
     data: dreams = [],
@@ -25,8 +37,36 @@ function CalendarPage() {
   const dreamDayCount = days.filter((day) => day.dream).length;
   const monthLabel = isSameMonth(month, new Date()) ? '이번 달' : `${month.getMonth() + 1}월`;
 
+  const selectedDay = days.find((day) => day.dateKey === selectedDateKey);
+  const selectedDream = selectedDay?.dream;
+
+  // 기록 있는 날을 선택하면 캘린더를 그 주 한 줄로 접고 카드를 보여준다
+  const isCollapsed = Boolean(selectedDream);
+
+  // 기록 없는 날을 선택하면 "꿈 추가하기" 버튼 표시 (미래 날짜는 기록할 수 없어서 제외)
+  const todayKey = toDateKey(new Date());
+  const canAddDream = Boolean(selectedDay && !selectedDream && selectedDay.dateKey <= todayKey);
+
   const changeMonth = (offset: number) => {
+    setSelectedDateKey(null);
     setMonth((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
+  };
+
+  const handleDayClick = (day: CalendarDay) => {
+    // 이미 선택한 빈 날짜를 다시 누르면 선택 해제
+    if (!day.dream && day.dateKey === selectedDateKey) {
+      setSelectedDateKey(null);
+      return;
+    }
+
+    setSelectedDateKey(day.dateKey);
+  };
+
+  const handleAddDream = () => {
+    if (!selectedDateKey) return;
+
+    // TODO: 꿈 기록 화면(DreamRecordPage)에서 ?date= 값을 읽어 기록 날짜로 쓰도록 담당자와 협의
+    navigate(`/dreams/new?date=${selectedDateKey}`);
   };
 
   return (
@@ -48,14 +88,18 @@ function CalendarPage() {
             </svg>
           </button>
         </header>
+
         <CalendarHero monthLabel={monthLabel} dreamDayCount={dreamDayCount} />
+
         <section aria-label="꿈 캘린더" className="flex flex-col gap-5">
-          <div className="flex h-[25px] items-center justify-between">
+          <div className="flex h-[25px] items-start justify-between">
             <MonthNavigator
               month={month}
               onPrev={() => changeMonth(-1)}
               onNext={() => changeMonth(1)}
             />
+
+            {canAddDream && <AddDreamButton onClick={handleAddDream} />}
           </div>
 
           {isError ? (
@@ -74,10 +118,45 @@ function CalendarPage() {
               aria-busy={isFetching}
               className={isFetching ? 'opacity-60 transition-opacity' : 'transition-opacity'}
             >
-              <CalendarGrid days={days} />
+              <CalendarGrid
+                days={days}
+                selectedDateKey={selectedDateKey}
+                isCollapsed={isCollapsed}
+                onDayClick={handleDayClick}
+              />
             </div>
           )}
         </section>
+
+        {isCollapsed && (
+          <>
+            {/* 캘린더 펼치기 */}
+            <button
+              type="button"
+              aria-label="캘린더 펼치기"
+              onClick={() => setSelectedDateKey(null)}
+              className="mx-auto mt-2 flex size-6 cursor-pointer items-center justify-center"
+            >
+              <img src={chevronIcon} alt="" className="size-6" />
+            </button>
+
+            <AnimatePresence mode="wait">
+              {selectedDream && (
+                <motion.div
+                  key={selectedDream.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  transition={{ duration: 0.2 }}
+                  className="mt-3"
+                >
+                  {/* TODO: 3단계에서 삭제 확인 모달 연결 */}
+                  <DreamSummaryCard dream={selectedDream} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </>
+        )}
       </div>
 
       <BottomNavigation />

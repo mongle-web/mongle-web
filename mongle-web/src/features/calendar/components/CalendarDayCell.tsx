@@ -14,7 +14,7 @@ type ImageStatus = 'loading' | 'loaded' | 'error';
 // - 이미지 생성한 날: 대표 이미지 + 어두운 숫자
 // - 기록만 있는 날: 보라색(P-300) 배경
 // - 기록 없는 날: 회색(N-900) 배경
-// - 기록 없는 날을 선택: 연보라(P-100) 배경 + 안쪽 보라 그림자
+// - 선택한 날: 아래 hasSelectedShadow 참고
 // - 앞/뒤 달 날짜: 배경 없이 흐린 숫자, 클릭 불가
 function CalendarDayCell({ day, isSelected = false, onClick }: CalendarDayCellProps) {
   const { date, isCurrentMonth, dream } = day;
@@ -30,12 +30,15 @@ function CalendarDayCell({ day, isSelected = false, onClick }: CalendarDayCellPr
     );
   }
 
-  // 이미지 주소가 있어도 로딩에 실패하면 기록만 있는 날처럼 보여줌
+  // 이미지 주소가 있어도 로딩에 실패하면 "기록만 있는 날"처럼 보여준다
   const hasImage = Boolean(dream?.thumbnailUrl) && imageStatus !== 'error';
 
-  // 선택 강조(연보라 + 안쪽 그림자)는 "기록 없는 날"을 눌렀을 때만 사용
-  // 기록이 있는 날은 선택해도 원래 모습(이미지 / 보라색)을 유지한다
+  // 선택 표시 (피그마 기준)
+  // - 기록 없는 날: 연보라 배경 + 안쪽 그림자
+  // - 이미지 있는 날: 이미지 그대로 + 안쪽 그림자
+  // - 기록만 있는 날(보라색): 선택해도 모습 변화 없음
   const isEmptySelected = isSelected && !dream;
+  const hasSelectedShadow = isEmptySelected || (isSelected && hasImage);
 
   const backgroundClassName = (() => {
     if (isEmptySelected) return 'bg-p-100';
@@ -53,7 +56,7 @@ function CalendarDayCell({ day, isSelected = false, onClick }: CalendarDayCellPr
       aria-pressed={isSelected}
       onClick={() => onClick?.(day)}
       className={[
-        'relative flex h-14 min-w-0 flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-lg',
+        'relative flex h-14 min-w-0 flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-[8px]',
         'text-[14px] leading-[1.5] font-semibold transition-colors',
         backgroundClassName,
         textClassName,
@@ -75,7 +78,7 @@ function CalendarDayCell({ day, isSelected = false, onClick }: CalendarDayCellPr
 
       <span className="relative">{dayNumber}</span>
 
-      {isEmptySelected && (
+      {hasSelectedShadow && (
         <span
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 rounded-[inherit] shadow-[inset_0_0_16px_0_#7a6ce3]"

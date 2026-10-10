@@ -5,11 +5,21 @@ import { splitIntoWeeks, WEEKDAYS } from '@/features/calendar/utils/calendar';
 interface CalendarGridProps {
   days: CalendarDay[];
   selectedDateKey?: string | null;
+  isCollapsed?: boolean; // true면 선택한 날짜가 있는 주 한 줄만 보여줌
   onDayClick?: (day: CalendarDay) => void;
 }
 
-function CalendarGrid({ days, selectedDateKey = null, onDayClick }: CalendarGridProps) {
+function CalendarGrid({
+  days,
+  selectedDateKey = null,
+  isCollapsed = false,
+  onDayClick,
+}: CalendarGridProps) {
   const weeks = splitIntoWeeks(days);
+
+  const visibleWeeks = isCollapsed
+    ? weeks.filter((week) => week.some((day) => day.dateKey === selectedDateKey))
+    : weeks;
 
   return (
     <div className="w-full">
@@ -27,7 +37,7 @@ function CalendarGrid({ days, selectedDateKey = null, onDayClick }: CalendarGrid
 
       {/* 날짜 */}
       <div className="flex flex-col gap-2">
-        {weeks.map((week) => (
+        {visibleWeeks.map((week) => (
           <div key={week[0].dateKey} className="flex gap-2">
             {week.map((day) => (
               <CalendarDayCell
