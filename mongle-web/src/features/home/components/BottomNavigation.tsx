@@ -22,7 +22,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { tab: 'archive', label: '꿈 보관함', path: '/', Icon: ArchiveIcon },
   { tab: 'home', label: '홈', path: '/', Icon: HomeIcon },
-  { tab: 'calendar', label: '캘린더', path: '/', Icon: CalendarIcon },
+  { tab: 'calendar', label: '캘린더', path: '/calendar', Icon: CalendarIcon },
 ];
 
 // Figma Glass 효과(빛 -45° · 세기 80% · 흐릿함 5)를 CSS로 근사
