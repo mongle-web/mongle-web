@@ -4,7 +4,7 @@ function HomeHeroCard() {
   return (
     <button
       type="button"
-      className="relative h-[226px] w-full overflow-hidden rounded-[24px] bg-gradient-to-br from-[#77718E] via-[#5D5871] to-[#292734] px-5 py-6 text-left shadow-[0_16px_45px_rgba(0,0,0,0.28)]"
+      className="relative h-[226px] w-[353px] shrink-0 overflow-hidden rounded-[24px] bg-gradient-to-br from-[#77718E] via-[#5D5871] to-[#292734] px-5 py-6 text-left shadow-[0_16px_45px_rgba(0,0,0,0.28)]"
     >
       <div className="relative z-10">
         <p className="text-[17px] leading-[1.45] font-semibold text-white">

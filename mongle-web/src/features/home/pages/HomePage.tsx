@@ -5,9 +5,10 @@ import { Header } from '@/components/common';
 import BottomNavigation from '@/features/home/components/BottomNavigation';
 import DreamAnalyzeCard from '@/features/home/components/DreamAnalyzeCard';
 import HomeHeroCard from '@/features/home/components/HomeHeroCard';
-import RecentDreamCard from '@/features/home/components/RecentDreamCard';
+import HomeMenuCard from '@/features/home/components/HomeMenuCard';
+// import RecentDreamCard from '@/features/home/components/RecentDreamCard';
 import RecordButton from '@/features/home/components/RecordButton';
-import { recentDreams } from '@/features/home/mocks/homeMockData';
+// import { recentDreams } from '@/features/home/mocks/homeMockData';
 
 function HomePage() {
   const navigate = useNavigate();
@@ -36,9 +37,15 @@ function HomePage() {
         <section className="mt-5 flex flex-col gap-2">
           {/* TODO: 임시 키워드 */}
           <DreamAnalyzeCard keyword="불안" />
+
+          {/* 피그마: 카드 사이 8px */}
+          <div className="grid grid-cols-2 gap-2">
+            <HomeMenuCard type="link" />
+            <HomeMenuCard type="archive" />
+          </div>
         </section>
 
-        {/* 최근 꿈 */}
+        {/* 최근 꿈 (새 디자인 적용 중 임시 주석 처리)
         <section className="mt-5">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-[14px] font-semibold text-[#F7F5FA]">지난 꿈 돌아보기</h2>
@@ -65,7 +72,7 @@ function HomePage() {
               <RecentDreamCard key={dream.id} dream={dream} />
             ))}
           </div>
-        </section>
+        </section> */}
       </div>
 
       <BottomNavigation />
