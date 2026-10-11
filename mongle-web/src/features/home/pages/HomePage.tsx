@@ -1,8 +1,9 @@
-
 import { useNavigate } from 'react-router-dom';
 
 import homeAd from '@/assets/images/home/home_ad.png';
 import homeLink from '@/assets/images/home/home_link.png';
+
+import { Header } from '@/components/common';
 
 import BottomNavigation from '@/features/home/components/BottomNavigation';
 import HomeHeroCard from '@/features/home/components/HomeHeroCard';
@@ -16,36 +17,18 @@ function HomePage() {
 
   return (
     <>
-      <div className="relative isolate min-h-screen bg-b-900 px-4 pt-5 pb-28">
+      <div className="relative isolate min-h-screen bg-b-900 px-5 pt-[14px] pb-28">
         {/* 상단 배경 빛 */}
         <div
           aria-hidden="true"
           className="pointer-events-none fixed inset-x-0 top-0 -z-10 mx-auto h-screen w-full max-w-[480px] bg-radial-[92.2%_47.65%_at_50%_0%] from-p-500/40 to-p-500/0"
         />
 
-        {/* 헤더 */}
-        <header className="mb-6 flex items-center justify-between">
-          <span className="text-[16px] font-medium tracking-[-0.02em] text-[#F7F5FA]">
-            logo
-          </span>
+        <Header />
 
-          <button
-            type="button"
-            aria-label="프로필"
-            className="flex h-9 w-9 items-center justify-center text-[#D3CEDD]"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              className="h-[22px] w-[22px]"
-              fill="currentColor"
-            >
-              <circle cx="12" cy="8" r="4" />
-              <path d="M5 20c0-4 3-7 7-7s7 3 7 7v1H5z" />
-            </svg>
-          </button>
-        </header>
-
-        <HomeHeroCard />
+        <div className="mt-6">
+          <HomeHeroCard />
+        </div>
 
         {/* 주요 기능 */}
         <section className="mt-4 flex flex-col gap-2">
@@ -67,9 +50,7 @@ function HomePage() {
         {/* 최근 꿈 */}
         <section className="mt-5">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-[14px] font-semibold text-[#F7F5FA]">
-              지난 꿈 돌아보기
-            </h2>
+            <h2 className="text-[14px] font-semibold text-[#F7F5FA]">지난 꿈 돌아보기</h2>
 
             <button
               type="button"
@@ -88,7 +69,7 @@ function HomePage() {
             </button>
           </div>
 
-          <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="-mx-5 flex gap-3 overflow-x-auto px-5 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {recentDreams.map((dream) => (
               <RecentDreamCard key={dream.id} dream={dream} />
             ))}
