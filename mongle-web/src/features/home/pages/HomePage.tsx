@@ -1,13 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 
-import homeAd from '@/assets/images/home/home_ad.png';
-import homeLink from '@/assets/images/home/home_link.png';
-
 import { Header } from '@/components/common';
 
 import BottomNavigation from '@/features/home/components/BottomNavigation';
+import DreamAnalyzeCard from '@/features/home/components/DreamAnalyzeCard';
 import HomeHeroCard from '@/features/home/components/HomeHeroCard';
-import QuickActionCard from '@/features/home/components/QuickActionCard';
 import RecentDreamCard from '@/features/home/components/RecentDreamCard';
 import RecordButton from '@/features/home/components/RecordButton';
 import { recentDreams } from '@/features/home/mocks/homeMockData';
@@ -26,25 +23,19 @@ function HomePage() {
 
         <Header />
 
-        <div className="mt-6">
+        <h1 className="mt-6 text-[20px] leading-[1.4] font-semibold text-b-200">
+          밤사이
+          <br />
+          어떤 일이 있었나요?
+        </h1>
+
+        <div className="mt-3">
           <HomeHeroCard />
         </div>
 
-        {/* 주요 기능 */}
-        <section className="mt-4 flex flex-col gap-2">
-          <QuickActionCard
-            title="꿈의 연결고리 찾기"
-            description="겹쳐진 꿈을 이어 나만의 이야기를 만들어 보세요."
-            image={homeLink}
-            imageClassName="h-[62px] w-[92px]"
-          />
-
-          <QuickActionCard
-            title="무료 토큰 받기"
-            description="광고를 시청하고 꿈 이미지 생성 토큰을 받아보세요."
-            image={homeAd}
-            imageClassName="h-[58px] w-[82px]"
-          />
+        <section className="mt-5 flex flex-col gap-2">
+          {/* TODO: 임시 키워드 */}
+          <DreamAnalyzeCard keyword="불안" />
         </section>
 
         {/* 최근 꿈 */}
