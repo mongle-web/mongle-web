@@ -1,7 +1,8 @@
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
+import { fromDateKey } from '@/features/calendar/utils/calendar';
 import DreamDatePicker from '@/features/dream-record/components/DreamDatePicker';
 
 type RecordStep = 'text' | 'emotion' | 'image' | 'complete';
@@ -63,7 +64,15 @@ function DreamRecordPage() {
   const navigate = useNavigate();
 
   const [step, setStep] = useState<RecordStep>('text');
-  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [searchParams] = useSearchParams();
+
+  // 처음 날짜: ?date=YYYY-MM-DD (홈 · 캘린더에서 넘겨줌), 없거나 잘못된 값이면 오늘
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const dateParam = searchParams.get('date');
+    const initialDate = dateParam ? fromDateKey(dateParam) : new Date();
+
+    return Number.isNaN(initialDate.getTime()) ? new Date() : initialDate;
+  });
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   const [content, setContent] = useState('');

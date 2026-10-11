@@ -1,75 +1,49 @@
-
-import { useNavigate } from 'react-router-dom';
-
-import homeAd from '@/assets/images/home/home_ad.png';
-import homeLink from '@/assets/images/home/home_link.png';
+import { Header } from '@/components/common';
 
 import BottomNavigation from '@/features/home/components/BottomNavigation';
+import DreamAnalyzeCard from '@/features/home/components/DreamAnalyzeCard';
 import HomeHeroCard from '@/features/home/components/HomeHeroCard';
-import QuickActionCard from '@/features/home/components/QuickActionCard';
-import RecentDreamCard from '@/features/home/components/RecentDreamCard';
-import RecordButton from '@/features/home/components/RecordButton';
-import { recentDreams } from '@/features/home/mocks/homeMockData';
+import HomeMenuCard from '@/features/home/components/HomeMenuCard';
+// import RecentDreamCard from '@/features/home/components/RecentDreamCard';
+// import { recentDreams } from '@/features/home/mocks/homeMockData';
 
 function HomePage() {
-  const navigate = useNavigate();
-
   return (
     <>
-      <div className="relative isolate min-h-screen bg-b-900 px-4 pt-5 pb-28">
+      <div className="relative isolate min-h-screen bg-b-900 px-5 pt-[14px] pb-28">
         {/* 상단 배경 빛 */}
         <div
           aria-hidden="true"
           className="pointer-events-none fixed inset-x-0 top-0 -z-10 mx-auto h-screen w-full max-w-[480px] bg-radial-[92.2%_47.65%_at_50%_0%] from-p-500/40 to-p-500/0"
         />
 
-        {/* 헤더 */}
-        <header className="mb-6 flex items-center justify-between">
-          <span className="text-[16px] font-medium tracking-[-0.02em] text-[#F7F5FA]">
-            logo
-          </span>
+        <Header />
 
-          <button
-            type="button"
-            aria-label="프로필"
-            className="flex h-9 w-9 items-center justify-center text-[#D3CEDD]"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              className="h-[22px] w-[22px]"
-              fill="currentColor"
-            >
-              <circle cx="12" cy="8" r="4" />
-              <path d="M5 20c0-4 3-7 7-7s7 3 7 7v1H5z" />
-            </svg>
-          </button>
-        </header>
+        <h1 className="mt-6 text-[20px] leading-[1.4] font-semibold text-b-200">
+          밤사이
+          <br />
+          어떤 일이 있었나요?
+        </h1>
 
-        <HomeHeroCard />
+        <div className="mt-3">
+          <HomeHeroCard />
+        </div>
 
-        {/* 주요 기능 */}
-        <section className="mt-4 flex flex-col gap-2">
-          <QuickActionCard
-            title="꿈의 연결고리 찾기"
-            description="겹쳐진 꿈을 이어 나만의 이야기를 만들어 보세요."
-            image={homeLink}
-            imageClassName="h-[62px] w-[92px]"
-          />
+        <section className="mt-5 flex flex-col gap-2">
+          {/* TODO: 임시 키워드 */}
+          <DreamAnalyzeCard keyword="불안" />
 
-          <QuickActionCard
-            title="무료 토큰 받기"
-            description="광고를 시청하고 꿈 이미지 생성 토큰을 받아보세요."
-            image={homeAd}
-            imageClassName="h-[58px] w-[82px]"
-          />
+          {/* 피그마: 카드 사이 8px */}
+          <div className="grid grid-cols-2 gap-2">
+            <HomeMenuCard type="link" />
+            <HomeMenuCard type="archive" />
+          </div>
         </section>
 
-        {/* 최근 꿈 */}
+        {/* 최근 꿈 (새 디자인 적용 중 임시 주석 처리)
         <section className="mt-5">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-[14px] font-semibold text-[#F7F5FA]">
-              지난 꿈 돌아보기
-            </h2>
+            <h2 className="text-[14px] font-semibold text-[#F7F5FA]">지난 꿈 돌아보기</h2>
 
             <button
               type="button"
@@ -88,18 +62,15 @@ function HomePage() {
             </button>
           </div>
 
-          <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="-mx-5 flex gap-3 overflow-x-auto px-5 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {recentDreams.map((dream) => (
               <RecentDreamCard key={dream.id} dream={dream} />
             ))}
           </div>
-        </section>
+        </section> */}
       </div>
 
       <BottomNavigation />
-
-      {/* 음성/텍스트 선택 단계 없이 기록 화면으로 직접 이동 */}
-      <RecordButton onClick={() => navigate('/dreams/new')} />
     </>
   );
 }

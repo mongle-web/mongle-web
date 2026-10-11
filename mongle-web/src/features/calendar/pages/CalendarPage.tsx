@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 import chevronIcon from '@/assets/icons/calendar/chevron.svg';
-import profileIcon from '@/assets/icons/common/profile.svg';
+import { Header } from '@/components/common';
 import AddDreamButton from '@/features/calendar/components/AddDreamButton';
 import CalendarDialog from '@/features/calendar/components/CalendarDialog';
 import CalendarGrid from '@/features/calendar/components/CalendarGrid';
@@ -106,17 +106,12 @@ function CalendarPage() {
     <>
       {/* 캐릭터 빛 번짐이 화면 오른쪽 밖으로 나가도 가로 스크롤이 생기지 않게 overflow-x-clip */}
       <div className="min-h-screen overflow-x-clip bg-b-900 px-5 pt-[14px] pb-28">
-        {/* 헤더 (피그마: 로고 · 프로필 아이콘 높이 24, 아래 문구까지 33px) */}
-        <header className="mb-[33px] flex h-6 items-center justify-between">
-          <span className="text-[20px] leading-6 text-b-200">logo</span>
+        <Header />
 
-          {/* TODO: 마이페이지가 생기면 이동 연결 */}
-          <button type="button" aria-label="프로필" className="size-6 cursor-pointer">
-            <img src={profileIcon} alt="" className="size-6" />
-          </button>
-        </header>
-
-        <CalendarHero monthLabel={monthLabel} dreamDayCount={dreamDayCount} />
+        {/* 피그마: 헤더에서 아래 문구까지 33px */}
+        <div className="mt-[33px]">
+          <CalendarHero monthLabel={monthLabel} dreamDayCount={dreamDayCount} />
+        </div>
 
         <section aria-label="꿈 캘린더" className="flex flex-col gap-5">
           <div className="flex h-[25px] items-start justify-between">
