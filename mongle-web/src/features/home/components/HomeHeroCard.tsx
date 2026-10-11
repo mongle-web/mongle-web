@@ -5,6 +5,7 @@ import cloudP500 from '@/assets/images/home/cloud_p-500.png';
 import homeCharacter from '@/assets/images/home/home_character.png';
 import ArrowIcon from '@/components/icons/ArrowIcon';
 import { WEEKDAYS } from '@/features/calendar/utils/calendar';
+import RecordButton from '@/features/home/components/RecordButton';
 
 // 예: 2026. 10. 02 (금)
 const formatHeroDate = (date: Date) => {
@@ -69,6 +70,11 @@ function HomeHeroCard() {
         alt=""
         className="absolute top-[50px] right-[-10px] w-[190px] select-none"
       />
+
+      {/* 꿈 기록하기 (피그마: 날짜 아래 약 120px, 좌우 20px, 높이 45) */}
+      <div className="absolute inset-x-5 top-[164px]">
+        <RecordButton />
+      </div>
     </div>
   );
 }

@@ -1,5 +1,3 @@
-import { useNavigate } from 'react-router-dom';
-
 import { Header } from '@/components/common';
 
 import BottomNavigation from '@/features/home/components/BottomNavigation';
@@ -7,12 +5,9 @@ import DreamAnalyzeCard from '@/features/home/components/DreamAnalyzeCard';
 import HomeHeroCard from '@/features/home/components/HomeHeroCard';
 import HomeMenuCard from '@/features/home/components/HomeMenuCard';
 // import RecentDreamCard from '@/features/home/components/RecentDreamCard';
-import RecordButton from '@/features/home/components/RecordButton';
 // import { recentDreams } from '@/features/home/mocks/homeMockData';
 
 function HomePage() {
-  const navigate = useNavigate();
-
   return (
     <>
       <div className="relative isolate min-h-screen bg-b-900 px-5 pt-[14px] pb-28">
@@ -76,9 +71,6 @@ function HomePage() {
       </div>
 
       <BottomNavigation />
-
-      {/* 음성/텍스트 선택 단계 없이 기록 화면으로 직접 이동 */}
-      <RecordButton onClick={() => navigate('/dreams/new')} />
     </>
   );
 }
