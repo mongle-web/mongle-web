@@ -71,9 +71,8 @@ function HomeHeroCard() {
         className="absolute top-[50px] right-[-10px] w-[190px] select-none"
       />
 
-      {/* 꿈 기록하기 (피그마: 날짜 아래 약 120px, 좌우 20px, 높이 45) */}
       <div className="absolute inset-x-5 top-[164px]">
-        <RecordButton />
+        <RecordButton date={selectedDate} />
       </div>
     </div>
   );
