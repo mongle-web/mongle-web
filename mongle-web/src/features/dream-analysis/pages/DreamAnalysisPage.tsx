@@ -1,5 +1,7 @@
 import { BackHeader } from '@/components/common';
+import InterpretationSection from '@/features/dream-analysis/components/InterpretationSection';
 import IntroSection from '@/features/dream-analysis/components/IntroSection';
+import { mockInterpretation } from '@/features/dream-analysis/mocks/dreamAnalysisMock';
 
 function DreamAnalysisPage() {
   return (
@@ -13,7 +15,8 @@ function DreamAnalysisPage() {
 
         {/* TODO: 자주 나타난 감정 */}
 
-        {/* TODO: 몽글의 꿈 해석 */}
+        {/* TODO: API 연동 시 mock 대신 실제 데이터 */}
+        <InterpretationSection interpretation={mockInterpretation} />
       </div>
     </div>
   );
