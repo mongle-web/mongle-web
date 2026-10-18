@@ -1,6 +1,16 @@
 import type { EmotionStat } from '@/features/dream-analysis/components/EmotionSection';
+import type { KeywordStat } from '@/features/dream-analysis/components/KeywordSection';
 
 // TODO: API 연동 시 제거
+
+// 자주 나타난 키워드
+export const mockKeywords: KeywordStat[] = [
+  { keyword: '어린 시절 집', count: 6 },
+  { keyword: '계단', count: 5 },
+  { keyword: '가족', count: 4 },
+  { keyword: '시선', count: 3 },
+  { keyword: '시간', count: 1 },
+];
 
 // 자주 나타난 감정
 export const mockEmotions: EmotionStat[] = [

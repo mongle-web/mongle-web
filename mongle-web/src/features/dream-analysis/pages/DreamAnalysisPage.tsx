@@ -2,9 +2,11 @@ import { BackHeader } from '@/components/common';
 import EmotionSection from '@/features/dream-analysis/components/EmotionSection';
 import InterpretationSection from '@/features/dream-analysis/components/InterpretationSection';
 import IntroSection from '@/features/dream-analysis/components/IntroSection';
+import KeywordSection from '@/features/dream-analysis/components/KeywordSection';
 import {
   mockEmotions,
   mockInterpretation,
+  mockKeywords,
 } from '@/features/dream-analysis/mocks/dreamAnalysisMock';
 
 function DreamAnalysisPage() {
@@ -15,7 +17,7 @@ function DreamAnalysisPage() {
       <div className="flex flex-col items-start gap-4 px-5 pt-5 pb-16">
         <IntroSection />
 
-        {/* TODO: 자주 나타난 키워드 */}
+        <KeywordSection keywords={mockKeywords} />
 
         <EmotionSection emotions={mockEmotions} />
 
