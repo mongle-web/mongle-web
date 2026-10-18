@@ -1,4 +1,13 @@
+import type { EmotionStat } from '@/features/dream-analysis/components/EmotionSection';
+
 // TODO: API 연동 시 제거
+
+// 자주 나타난 감정
+export const mockEmotions: EmotionStat[] = [
+  { emotion: '압박감', count: 4 },
+  { emotion: '편안함', count: 3 },
+  { emotion: '불안감', count: 1 },
+];
 
 // 몽글의 꿈 해석 (문단 사이는 빈 줄로 구분)
 export const mockInterpretation = `최근 기록한 꿈에서는 ‘압박감’과 ‘시간’에 관련된 키워드가 자주 나타났어요. 정해진 시간 안에 무언가를 해내야 하거나 예상대로 일이 진행되지 않는 상황이 반복되며, 최근 느끼고 있는 부담이나 긴장감이 꿈에 반영된 것으로 보여요.

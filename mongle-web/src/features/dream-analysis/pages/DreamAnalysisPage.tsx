@@ -1,7 +1,11 @@
 import { BackHeader } from '@/components/common';
+import EmotionSection from '@/features/dream-analysis/components/EmotionSection';
 import InterpretationSection from '@/features/dream-analysis/components/InterpretationSection';
 import IntroSection from '@/features/dream-analysis/components/IntroSection';
-import { mockInterpretation } from '@/features/dream-analysis/mocks/dreamAnalysisMock';
+import {
+  mockEmotions,
+  mockInterpretation,
+} from '@/features/dream-analysis/mocks/dreamAnalysisMock';
 
 function DreamAnalysisPage() {
   return (
@@ -13,7 +17,7 @@ function DreamAnalysisPage() {
 
         {/* TODO: 자주 나타난 키워드 */}
 
-        {/* TODO: 자주 나타난 감정 */}
+        <EmotionSection emotions={mockEmotions} />
 
         {/* TODO: API 연동 시 mock 대신 실제 데이터 */}
         <InterpretationSection interpretation={mockInterpretation} />
