@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 
-// TODO: 꿈 분석 기록 페이지가 생기면 경로만 바꾸기
-const DREAM_ANALYSIS_PATH = '/';
+const DREAM_ANALYSIS_PATH = '/dreams/analysis';
 
 interface DreamAnalyzeCardProps {
   // 이번 달 가장 많이 나온 감정 키워드 (예: '불안')

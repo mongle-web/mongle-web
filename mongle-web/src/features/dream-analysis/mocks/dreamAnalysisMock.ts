@@ -1,0 +1,29 @@
+import type { EmotionStat } from '@/features/dream-analysis/components/EmotionSection';
+import type { KeywordStat } from '@/features/dream-analysis/components/KeywordSection';
+
+// TODO: API 연동 시 제거
+
+// 자주 나타난 키워드
+export const mockKeywords: KeywordStat[] = [
+  { keyword: '어린 시절 집', count: 6 },
+  { keyword: '계단', count: 5 },
+  { keyword: '가족', count: 4 },
+  { keyword: '시선', count: 3 },
+  { keyword: '시간', count: 1 },
+];
+
+// 자주 나타난 감정
+export const mockEmotions: EmotionStat[] = [
+  { emotion: '압박감', count: 4 },
+  { emotion: '편안함', count: 3 },
+  { emotion: '불안감', count: 1 },
+];
+
+// 몽글의 꿈 해석 (문단 사이는 빈 줄로 구분)
+export const mockInterpretation = `최근 기록한 꿈에서는 ‘압박감’과 ‘시간’에 관련된 키워드가 자주 나타났어요. 정해진 시간 안에 무언가를 해내야 하거나 예상대로 일이 진행되지 않는 상황이 반복되며, 최근 느끼고 있는 부담이나 긴장감이 꿈에 반영된 것으로 보여요.
+
+또한 ‘어린 시절 집’과 ‘가족’처럼 익숙한 공간과 인물이 여러 꿈에서 반복적으로 등장했어요. 이러한 요소들은 편안함이나 안정감을 원하는 마음, 또는 과거의 기억과 감정이 현재의 경험과 연결되어 나타난 것일 수 있어요.
+
+전체적으로 최근의 꿈에서는 해야 할 일에 대한 부담과 익숙한 곳에서 안정감을 찾으려는 흐름이 함께 나타나고 있어요. 바쁜 일정이나 신경 쓰이는 일이 있었다면 그 과정에서 느낀 감정들이 꿈속에서 다양한 장면으로 표현되었을 가능성이 있어요.
+
+꿈의 의미는 개인의 경험과 당시의 감정에 따라 달라질 수 있으니, 하나의 가능성으로 가볍게 참고해 주세요.`;
