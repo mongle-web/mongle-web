@@ -1,45 +1,24 @@
-
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { fromDateKey } from '@/features/calendar/utils/calendar';
 import DreamDatePicker from '@/features/dream-record/components/DreamDatePicker';
+import EmotionSelector from '@/features/dream-record/components/EmotionSelector';
+import {
+  MAX_EMOTIONS,
+  MAX_LENGTH,
+  parseRecordDate,
+  readDraft,
+  toDateString,
+  writeDraft,
+  type DreamDraft,
+  type Emotion,
+  type RecordStep,
+} from '@/features/dream-record/utils/dreamDraft';
 
-type RecordStep = 'text' | 'emotion' | 'image' | 'complete';
-
-type Emotion = '행복' | '편안함' | '설렘' | '슬픔' | '불안' | '화남' | '당황';
-
-interface DreamDraft {
-  date: string;
-  content: string;
-  emotion: Emotion | null;
-  imageRequested: boolean;
-}
-
-const EMOTIONS: Emotion[] = [
-  '행복',
-  '편안함',
-  '설렘',
-  '슬픔',
-  '불안',
-  '화남',
-  '당황',
-];
-
-const MAX_LENGTH = 500;
-const DRAFT_KEY = 'mongle:dream-record-draft';
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
 function formatDate(date: Date) {
   return `${date.getMonth() + 1}월 ${date.getDate()}일 ${WEEKDAYS[date.getDay()]}요일`;
-}
-
-function toDateString(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-
-  return `${year}-${month}-${day}`;
 }
 
 function BackIcon() {
@@ -62,49 +41,87 @@ function BackIcon() {
 
 function DreamRecordPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [step, setStep] = useState<RecordStep>('text');
-  const [searchParams] = useSearchParams();
+  const [initial] = useState(() => {
+    const date = parseRecordDate(searchParams.get('date')) ?? new Date();
 
-  // 처음 날짜: ?date=YYYY-MM-DD (홈 · 캘린더에서 넘겨줌), 없거나 잘못된 값이면 오늘
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const dateParam = searchParams.get('date');
-    const initialDate = dateParam ? fromDateKey(dateParam) : new Date();
-
-    return Number.isNaN(initialDate.getTime()) ? new Date() : initialDate;
+    return readDraft(toDateString(date));
   });
+
+  const [draft, setDraft] = useState<DreamDraft>(initial.draft);
+  const [step, setStep] = useState<RecordStep>(initial.draft.step);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-
-  const [content, setContent] = useState('');
-  const [emotion, setEmotion] = useState<Emotion | null>(null);
   const [message, setMessage] = useState('');
+  const [storageWarning, setStorageWarning] = useState(initial.warning);
 
-  const saveDraft = (imageRequested: boolean) => {
-    const draft: DreamDraft = {
-      date: toDateString(selectedDate),
-      content: content.trim(),
-      emotion,
-      imageRequested,
+  const selectedDate = parseRecordDate(draft.date) ?? new Date();
+  const { content, emotions } = draft;
+
+  const updateDraft = (changes: Partial<DreamDraft>) => {
+    const next = {
+      ...draft,
+      ...changes,
     };
 
-    try {
-      sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-      return true;
-    } catch {
-      setMessage('임시 기록을 저장하지 못했습니다.');
-      return false;
+    setDraft(next);
+
+    const saved = writeDraft(next);
+
+    setStorageWarning(
+      saved
+        ? ''
+        : '임시 보관에 실패했어요. 화면을 나가면 작성 내용이 사라질 수 있어요.',
+    );
+
+    return saved;
+  };
+
+  const changeStep = (nextStep: RecordStep) => {
+    setStep(nextStep);
+
+    updateDraft({
+      step: nextStep === 'complete' ? 'image' : nextStep,
+    });
+  };
+
+  const selectDate = (date: Date) => {
+    const dateKey = toDateString(date);
+
+    if (dateKey === draft.date) {
+      return;
     }
+
+    if (!updateDraft({})) {
+      return;
+    }
+
+    const restored = readDraft(dateKey);
+
+    setDraft(restored.draft);
+    setStep(restored.draft.step);
+    setStorageWarning(restored.warning);
+    setMessage('');
+
+    setSearchParams(
+      {
+        date: dateKey,
+      },
+      {
+        replace: true,
+      },
+    );
   };
 
   const handleBack = () => {
     setMessage('');
 
     if (step === 'complete') {
-      setStep('image');
+      changeStep('image');
     } else if (step === 'image') {
-      setStep('emotion');
+      changeStep('emotion');
     } else if (step === 'emotion') {
-      setStep('text');
+      changeStep('text');
     } else {
       navigate('/');
     }
@@ -119,28 +136,59 @@ function DreamRecordPage() {
         return;
       }
 
-      setStep('emotion');
+      changeStep('emotion');
       return;
     }
 
     if (step === 'emotion') {
-      if (!emotion) {
+      if (emotions.length === 0) {
         setMessage('꿈에서 느꼈던 감정을 선택해 주세요.');
         return;
       }
 
-      setStep('image');
+      changeStep('image');
     }
   };
 
+  const toggleEmotion = (emotion: Emotion) => {
+    if (emotions.includes(emotion)) {
+      updateDraft({
+        emotions: emotions.filter((item) => item !== emotion),
+        imageRequested: false,
+      });
+
+      setMessage('');
+      return;
+    }
+
+    if (emotions.length >= MAX_EMOTIONS) {
+      setMessage(`감정은 최대 ${MAX_EMOTIONS}개까지 선택할 수 있어요.`);
+      return;
+    }
+
+    updateDraft({
+      emotions: [...emotions, emotion],
+      imageRequested: false,
+    });
+
+    setMessage('');
+  };
+
   const handleSkipImage = () => {
-    if (saveDraft(false)) {
+    setMessage('');
+
+    const saved = updateDraft({
+      imageRequested: false,
+      step: 'image',
+    });
+
+    if (saved) {
       setStep('complete');
     }
   };
 
   const handleGenerateImage = () => {
-    if (saveDraft(true)) {
+    if (updateDraft({ imageRequested: true })) {
       setMessage(
         '이미지 생성 요청을 위한 기록을 준비했습니다. 실제 이미지 생성은 API 연결 후 이용할 수 있습니다.',
       );
@@ -151,18 +199,17 @@ function DreamRecordPage() {
     step === 'text'
       ? content.trim().length > 0
       : step === 'emotion'
-        ? emotion !== null
+        ? emotions.length > 0
         : false;
 
   return (
     <div className="flex min-h-dvh flex-col bg-b-900 text-b-200">
-      {/* 상단 헤더 */}
-      <header className="flex h-[68px] shrink-0 items-center justify-between px-5">
+      <header className="grid h-11 shrink-0 grid-cols-[28px_minmax(0,1fr)_28px] items-center px-5">
         <button
           type="button"
           onClick={handleBack}
           aria-label="이전 화면"
-          className="flex h-10 w-10 items-center justify-start"
+          className="flex size-7 items-center justify-center"
         >
           <BackIcon />
         </button>
@@ -171,25 +218,49 @@ function DreamRecordPage() {
           <button
             type="button"
             onClick={() => setIsDatePickerOpen(true)}
-            className="flex items-center gap-1 text-[16px] font-medium"
+            aria-label="꿈 기록 날짜 선택"
+            aria-haspopup="dialog"
+            aria-expanded={isDatePickerOpen}
+            className="inline-flex h-11 items-center justify-center gap-1 justify-self-center text-b-200"
           >
-            {formatDate(selectedDate)}
-            <span className="ml-1 text-b-400">⌄</span>
+            <span className="text-[16px] leading-6 font-medium whitespace-nowrap">
+              {formatDate(selectedDate)}
+            </span>
+
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+              className="block size-6 shrink-0"
+            >
+              <path
+                d="M6 9L12 15L18 9"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </button>
         ) : (
-          <span className="text-[16px] font-medium">꿈 기록</span>
+          <span className="justify-self-center text-[16px] leading-6 font-medium">
+            꿈 기록
+          </span>
         )}
 
-        <div className="w-10" />
+        <div aria-hidden="true" className="size-7" />
       </header>
 
-      <main className="flex flex-1 flex-col px-5 pt-8">
+      <main className="flex flex-1 flex-col px-5 pt-5">
         {step === 'text' && (
           <>
             <section>
               <h1 className="text-[18px] leading-[1.4] font-semibold">
                 오늘 밤, 무엇을 보았나요?
               </h1>
+
               <p className="mt-3 text-[14px] leading-[1.5] text-b-600">
                 꿈에서 기억나는 순간들을
                 <br />
@@ -197,7 +268,7 @@ function DreamRecordPage() {
               </p>
             </section>
 
-            <section className="mt-8">
+            <section className="mt-6">
               <label htmlFor="dream-content" className="sr-only">
                 꿈 내용
               </label>
@@ -207,7 +278,11 @@ function DreamRecordPage() {
                   id="dream-content"
                   value={content}
                   onChange={(event) => {
-                    setContent(event.target.value);
+                    updateDraft({
+                      content: event.target.value,
+                      imageRequested: false,
+                    });
+
                     setMessage('');
                   }}
                   placeholder="꿈의 내용을 자유롭게 작성해 주세요."
@@ -229,6 +304,7 @@ function DreamRecordPage() {
               <h1 className="text-[18px] leading-[1.4] font-semibold">
                 꿈속에서의 감정은 어땠나요?
               </h1>
+
               <p className="mt-3 text-[14px] leading-[1.5] text-b-600">
                 꿈에서 느꼈던 순간의 감정을 떠올려보고
                 <br />
@@ -236,35 +312,10 @@ function DreamRecordPage() {
               </p>
             </section>
 
-            <section
-              aria-label="꿈 감정 선택"
-              className="mt-10 flex flex-col gap-3"
-            >
-              {EMOTIONS.map((item) => {
-                const isSelected = emotion === item;
-
-                return (
-                  <button
-                    key={item}
-                    type="button"
-                    aria-pressed={isSelected}
-                    onClick={() => {
-                      setEmotion(item);
-                      setMessage('');
-                    }}
-                    className={[
-                      'flex h-14 shrink-0 items-center rounded-[16px] px-[22px]',
-                      'text-left text-[18px] font-semibold transition-colors',
-                      isSelected
-                        ? 'bg-p-100 text-p-900'
-                        : 'bg-n-900 text-b-400 hover:bg-n-800',
-                    ].join(' ')}
-                  >
-                    {item}
-                  </button>
-                );
-              })}
-            </section>
+            <EmotionSelector
+              selected={emotions}
+              onToggle={toggleEmotion}
+            />
           </>
         )}
 
@@ -284,8 +335,8 @@ function DreamRecordPage() {
 
             <div className="mt-7 inline-flex w-fit items-center gap-2 rounded-full bg-n-900 px-3 py-2">
               <span className="text-p-300">●</span>
-              <span className="text-[16px] font-semibold">2</span>
-              <span className="text-[12px] text-b-400">피그마 예시</span>
+              <span className="text-[14px] font-medium">보유 토큰</span>
+              <span className="text-[12px] text-b-400">확인 전</span>
             </div>
 
             <div className="flex flex-1 items-center justify-center">
@@ -306,7 +357,9 @@ function DreamRecordPage() {
                     stroke="#BCB3FF"
                     strokeWidth="3"
                   />
+
                   <circle cx="37" cy="40" r="8" fill="#7A6CE3" />
+
                   <path
                     d="M20 71 43 51 57 63 70 44 82 60"
                     stroke="#BCB3FF"
@@ -315,6 +368,7 @@ function DreamRecordPage() {
                     strokeLinejoin="round"
                   />
                 </svg>
+
                 <p className="mt-4 text-[13px] text-b-400">
                   꿈을 그림으로 표현해 보세요
                 </p>
@@ -342,21 +396,38 @@ function DreamRecordPage() {
         )}
       </main>
 
-      {/* 하단 액션 */}
       <footer className="sticky bottom-0 bg-b-900 px-5 pt-4 pb-[max(24px,env(safe-area-inset-bottom))]">
+        {storageWarning && (
+          <p
+            role="alert"
+            className="mb-4 text-center text-[13px] leading-[1.5] text-b-300"
+          >
+            {storageWarning}
+          </p>
+        )}
+
         {message && (
-          <p role="status" className="mb-4 text-center text-[13px] leading-[1.5] text-b-300">
+          <p
+            role="status"
+            className="mb-4 text-center text-[13px] leading-[1.5] text-b-300"
+          >
             {message}
           </p>
         )}
 
         {(step === 'text' || step === 'emotion') && (
-          <div className={step === 'emotion' ? 'flex items-center justify-between gap-4' : ''}>
+          <div
+            className={
+              step === 'emotion'
+                ? 'flex items-center justify-between gap-4'
+                : ''
+            }
+          >
             {step === 'emotion' && (
               <button
                 type="button"
                 onClick={handleBack}
-                className="h-12 flex-1 text-[16px] font-semibold text-b-400"
+                className="h-12 w-[109px] text-[16px] font-semibold text-b-400"
               >
                 이전
               </button>
@@ -366,12 +437,16 @@ function DreamRecordPage() {
               type="button"
               disabled={!canProceed}
               onClick={handleNext}
+              style={{
+                border: '2px solid rgba(255,255,255,0.4)',
+              }}
               className={[
                 'h-14 rounded-[16px] text-[16px] font-semibold transition-colors',
-                step === 'emotion' ? 'flex-1' : 'w-full',
+                'focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-p-300',
+                step === 'emotion' ? 'w-[109px]' : 'w-full',
                 canProceed
-                  ? 'bg-n-200 text-p-900 active:bg-n-300'
-                  : 'cursor-not-allowed bg-n-800 text-b-400',
+                  ? 'bg-p-500 text-b-200 shadow-[0_0_8px_rgba(255,255,255,0.25)] active:bg-p-900'
+                  : 'cursor-not-allowed bg-n-200 text-b-200',
               ].join(' ')}
             >
               다음
@@ -414,7 +489,7 @@ function DreamRecordPage() {
       {isDatePickerOpen && (
         <DreamDatePicker
           value={selectedDate}
-          onChange={setSelectedDate}
+          onChange={selectDate}
           onClose={() => setIsDatePickerOpen(false)}
         />
       )}

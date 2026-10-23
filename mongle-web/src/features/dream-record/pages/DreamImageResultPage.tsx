@@ -1,6 +1,6 @@
-
-import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+
+import DreamImage from '@/components/common/DreamImage';
 
 interface DreamImageResultState {
   imageUrl: string;
@@ -28,13 +28,9 @@ function DreamImageResultPage() {
     ? location.state
     : null;
 
-  const [imageStatus, setImageStatus] = useState<
-    'loading' | 'success' | 'error'
-  >('loading');
-
   return (
     <div className="flex min-h-dvh flex-col bg-b-900 text-b-200">
-      <main className="flex flex-1 flex-col items-center px-5 pt-[140px]">
+      <main className="flex flex-1 flex-col items-center px-5 pt-[154px]">
         {result ? (
           <>
             <div className="text-center">
@@ -43,42 +39,18 @@ function DreamImageResultPage() {
               </h1>
 
               <p className="mt-3 text-[16px] leading-[1.5] text-b-400">
-                {result.saved
+                {result.saved === true
                   ? '보관함에 소중히 담아두었어요.'
                   : '생성된 꿈 이미지를 확인해 보세요.'}
               </p>
             </div>
 
-            <div className="relative mt-[60px] w-full overflow-hidden rounded-[16px] bg-n-900">
-              {imageStatus === 'loading' && (
-                <div
-                  role="status"
-                  className="absolute inset-0 flex items-center justify-center text-[14px] text-b-400"
-                >
-                  이미지를 불러오고 있어요...
-                </div>
-              )}
-
-              {imageStatus === 'error' && (
-                <div
-                  role="alert"
-                  className="absolute inset-0 flex items-center justify-center text-[14px] text-b-400"
-                >
-                  이미지를 불러오지 못했습니다.
-                </div>
-              )}
-
-              <img
-                src={result.imageUrl}
-                alt="AI가 생성한 꿈 이미지"
-                onLoad={() => setImageStatus('success')}
-                onError={() => setImageStatus('error')}
-                className={[
-                  'aspect-[353/200] w-full object-cover',
-                  imageStatus === 'success' ? 'opacity-100' : 'opacity-0',
-                ].join(' ')}
-              />
-            </div>
+            <DreamImage
+              key={result.imageUrl}
+              src={result.imageUrl}
+              alt="AI가 생성한 꿈 이미지"
+              className="mt-[54px] aspect-[353/200] w-full rounded-[16px]"
+            />
           </>
         ) : (
           <div className="text-center">
