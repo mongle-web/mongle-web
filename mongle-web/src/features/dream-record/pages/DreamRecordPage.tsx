@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
+import DreamImage from '@/components/common/DreamImage';
 import DreamDatePicker from '@/features/dream-record/components/DreamDatePicker';
 import EmotionSelector from '@/features/dream-record/components/EmotionSelector';
 import {
@@ -12,30 +13,129 @@ import {
   writeDraft,
   type DreamDraft,
   type Emotion,
-  type RecordStep,
 } from '@/features/dream-record/utils/dreamDraft';
 
+type Screen = 'text' | 'emotion' | 'image' | 'result' | 'complete' | 'charge';
+
+type ModalType = 'loading' | 'tokens' | null;
+
+const ASSET_PATH = '/dream-record/';
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
-function formatDate(date: Date) {
-  return `${date.getMonth() + 1}월 ${date.getDate()}일 ${WEEKDAYS[date.getDay()]}요일`;
+function PrimaryButton({
+  className = '',
+  children,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      {...props}
+      type="button"
+      className={[
+        'flex min-h-14 w-full items-center justify-center gap-2.5',
+        'rounded-2xl border-2! border-solid! border-white/40!',
+        'bg-p-500 px-3 py-2.5 text-[16px]! leading-[1.3]! font-semibold! text-b-200',
+        'shadow-[0_0_8px_rgba(255,255,255,0.25)]',
+        'transition-colors active:bg-p-900',
+        'disabled:cursor-default disabled:bg-n-200 disabled:shadow-none',
+        'focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-p-300',
+        className,
+      ].join(' ')}
+    >
+      {children}
+    </button>
+  );
 }
 
-function BackIcon() {
+function SecondaryButton({
+  className = '',
+  children,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <svg
-      width="28"
-      height="28"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
+    <button
+      {...props}
+      type="button"
+      className={[
+        'flex min-h-10 w-full items-center justify-center gap-2.5',
+        'rounded-2xl bg-transparent px-3 py-2',
+        'text-[16px]! leading-[1.3]! font-semibold! text-b-400',
+        'disabled:opacity-40',
+        'focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-p-300',
+        className,
+      ].join(' ')}
     >
-      <path d="m15 18-6-6 6-6" />
-    </svg>
+      {children}
+    </button>
+  );
+}
+
+function TokenCost({ muted = false }: { muted?: boolean }) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <img src={`${ASSET_PATH}${muted ? 'coin-muted' : 'coin'}.svg`} alt="" className="shrink-0" />
+      <span>1</span>
+    </span>
+  );
+}
+
+function Glow({ className = '' }: { className?: string }) {
+  return (
+    <img
+      src={`${ASSET_PATH}glow.svg`}
+      alt=""
+      aria-hidden="true"
+      className={[
+        'pointer-events-none absolute left-[calc(50%-8px)]',
+        'max-w-none -translate-x-1/2 rotate-[14.85deg]',
+        className,
+      ].join(' ')}
+    />
+  );
+}
+
+function FlowModal({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+
+    dialog?.showModal();
+
+    return () => dialog?.close();
+  }, []);
+
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-label={title}
+      className={[
+        'fixed inset-0 m-auto w-[248px]',
+        'max-h-[calc(100dvh-40px)] max-w-[calc(100vw-40px)]',
+        'rounded-3xl border-0 bg-n-900/40 p-5 text-b-200',
+        'shadow-[0_0_20px_rgba(255,255,255,0.3)] backdrop-blur-xl',
+        'backdrop:bg-black/25',
+      ].join(' ')}
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div onClick={(event) => event.stopPropagation()}>{children}</div>
+    </dialog>
   );
 }
 
@@ -50,448 +150,544 @@ function DreamRecordPage() {
   });
 
   const [draft, setDraft] = useState<DreamDraft>(initial.draft);
-  const [step, setStep] = useState<RecordStep>(initial.draft.step);
-  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [screen, setScreen] = useState<Screen>(initial.draft.step);
+
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [modal, setModal] = useState<ModalType>(null);
   const [message, setMessage] = useState('');
   const [storageWarning, setStorageWarning] = useState(initial.warning);
 
-  const selectedDate = parseRecordDate(draft.date) ?? new Date();
-  const { content, emotions } = draft;
+  // API 연결 전 피그마 화면용 값.
+  const [tokens, setTokens] = useState(2);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [imageVersion, setImageVersion] = useState(0);
 
-  const updateDraft = (changes: Partial<DreamDraft>) => {
-    const next = {
-      ...draft,
-      ...changes,
+  const generationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const generationLock = useRef(false);
+  const chargeReturnScreen = useRef<'image' | 'result'>('image');
+
+  const selectedDate = parseRecordDate(draft.date) ?? new Date();
+  const isFinished = screen === 'result' || screen === 'complete';
+
+  useEffect(() => {
+    return () => {
+      if (generationTimer.current !== null) {
+        clearTimeout(generationTimer.current);
+      }
     };
+  }, []);
+
+  function updateDraft(changes: Partial<DreamDraft>) {
+    const next = { ...draft, ...changes };
 
     setDraft(next);
 
-    const saved = writeDraft(next);
-
     setStorageWarning(
-      saved
-        ? ''
-        : '임시 보관에 실패했어요. 화면을 나가면 작성 내용이 사라질 수 있어요.',
+      writeDraft(next) ? '' : '임시 보관에 실패했어요. 화면을 나가면 작성 내용이 사라질 수 있어요.',
     );
+  }
 
-    return saved;
-  };
+  function changeScreen(next: 'text' | 'emotion' | 'image') {
+    updateDraft({ step: next });
+    setScreen(next);
+    setMessage('');
+  }
 
-  const changeStep = (nextStep: RecordStep) => {
-    setStep(nextStep);
-
-    updateDraft({
-      step: nextStep === 'complete' ? 'image' : nextStep,
-    });
-  };
-
-  const selectDate = (date: Date) => {
+  function selectDate(date: Date) {
     const dateKey = toDateString(date);
 
-    if (dateKey === draft.date) {
-      return;
-    }
+    if (dateKey === draft.date) return;
 
-    if (!updateDraft({})) {
+    if (!writeDraft(draft)) {
+      setStorageWarning('현재 기록을 임시 보관하지 못했어요. 다시 시도해 주세요.');
       return;
     }
 
     const restored = readDraft(dateKey);
 
     setDraft(restored.draft);
-    setStep(restored.draft.step);
+    setScreen(restored.draft.step);
     setStorageWarning(restored.warning);
     setMessage('');
 
     setSearchParams(
-      {
-        date: dateKey,
+      (current) => {
+        current.set('date', dateKey);
+        return current;
       },
-      {
-        replace: true,
-      },
+      { replace: true },
     );
-  };
+  }
 
-  const handleBack = () => {
+  function handleBack() {
+    if (generationLock.current) return;
+
     setMessage('');
 
-    if (step === 'complete') {
-      changeStep('image');
-    } else if (step === 'image') {
-      changeStep('emotion');
-    } else if (step === 'emotion') {
-      changeStep('text');
-    } else {
-      navigate('/');
-    }
-  };
-
-  const handleNext = () => {
-    setMessage('');
-
-    if (step === 'text') {
-      if (!content.trim()) {
-        setMessage('꿈의 내용을 작성해 주세요.');
-        return;
-      }
-
-      changeStep('emotion');
+    if (screen === 'charge') {
+      setScreen(chargeReturnScreen.current);
       return;
     }
 
-    if (step === 'emotion') {
-      if (emotions.length === 0) {
-        setMessage('꿈에서 느꼈던 감정을 선택해 주세요.');
-        return;
-      }
-
-      changeStep('image');
+    if (screen === 'image') {
+      changeScreen('emotion');
+      return;
     }
-  };
 
-  const toggleEmotion = (emotion: Emotion) => {
-    if (emotions.includes(emotion)) {
+    if (screen === 'emotion') {
+      changeScreen('text');
+      return;
+    }
+
+    navigate('/');
+  }
+
+  function toggleEmotion(emotion: Emotion) {
+    if (draft.emotions.includes(emotion)) {
       updateDraft({
-        emotions: emotions.filter((item) => item !== emotion),
+        emotions: draft.emotions.filter((item) => item !== emotion),
         imageRequested: false,
       });
-
       setMessage('');
       return;
     }
 
-    if (emotions.length >= MAX_EMOTIONS) {
+    if (draft.emotions.length >= MAX_EMOTIONS) {
       setMessage(`감정은 최대 ${MAX_EMOTIONS}개까지 선택할 수 있어요.`);
       return;
     }
 
     updateDraft({
-      emotions: [...emotions, emotion],
+      emotions: [...draft.emotions, emotion],
       imageRequested: false,
     });
+    setMessage('');
+  }
+
+  function handleNext() {
+    if (screen === 'text') {
+      if (!draft.content.trim()) return;
+
+      changeScreen('emotion');
+      return;
+    }
+
+    if (screen === 'emotion') {
+      if (draft.emotions.length === 0) return;
+
+      changeScreen('image');
+    }
+  }
+
+  function startGeneration(availableTokens: number) {
+    if (generationLock.current) return;
 
     setMessage('');
-  };
 
-  const handleSkipImage = () => {
-    setMessage('');
+    if (availableTokens < 1) {
+      setModal('tokens');
+      return;
+    }
 
-    const saved = updateDraft({
+    generationLock.current = true;
+
+    setIsGenerating(true);
+    setModal('loading');
+
+    updateDraft({
+      imageRequested: true,
+      step: 'image',
+    });
+
+    // API 연결 시 이미지 생성 응답을 받은 뒤 결과 화면으로 이동한다.
+    // 현재는 프론트 화면 연결만 처리한다.
+    generationTimer.current = setTimeout(() => {
+      setTokens(availableTokens - 1);
+      setImageVersion((value) => value + 1);
+      setScreen('result');
+      setModal(null);
+      setIsGenerating(false);
+
+      generationLock.current = false;
+      generationTimer.current = null;
+    }, 1500);
+  }
+
+  function handleGenerate() {
+    chargeReturnScreen.current = screen === 'result' ? 'result' : 'image';
+
+    startGeneration(tokens);
+  }
+
+  function handleCharge(amount: number) {
+    if (generationLock.current) return;
+
+    // 실제 결제 연동 전 화면 전환.
+    const nextTokens = tokens + amount;
+
+    setTokens(nextTokens);
+    setScreen(chargeReturnScreen.current);
+
+    startGeneration(nextTokens);
+  }
+
+  function handleReward() {
+    if (generationLock.current) return;
+
+    // 광고 SDK 연결 시 보상 완료 콜백에서 실행할 부분.
+    const nextTokens = tokens + 1;
+
+    setTokens(nextTokens);
+    startGeneration(nextTokens);
+  }
+
+  function handleSaveWithoutImage() {
+    if (generationLock.current) return;
+
+    updateDraft({
       imageRequested: false,
       step: 'image',
     });
 
-    if (saved) {
-      setStep('complete');
-    }
-  };
+    setMessage('');
 
-  const handleGenerateImage = () => {
-    if (updateDraft({ imageRequested: true })) {
-      setMessage(
-        '이미지 생성 요청을 위한 기록을 준비했습니다. 실제 이미지 생성은 API 연결 후 이용할 수 있습니다.',
-      );
-    }
-  };
-
-  const canProceed =
-    step === 'text'
-      ? content.trim().length > 0
-      : step === 'emotion'
-        ? emotions.length > 0
-        : false;
+    // API 연결 시 저장 성공 응답을 받은 뒤 이동한다.
+    setScreen('complete');
+  }
 
   return (
-    <div className="flex min-h-dvh flex-col bg-b-900 text-b-200">
-      <header className="grid h-11 shrink-0 grid-cols-[28px_minmax(0,1fr)_28px] items-center px-5">
-        <button
-          type="button"
-          onClick={handleBack}
-          aria-label="이전 화면"
-          className="flex size-7 items-center justify-center"
-        >
-          <BackIcon />
-        </button>
-
-        {step !== 'complete' ? (
+    <div className="flex min-h-dvh flex-col overflow-x-clip bg-b-900 pt-[env(safe-area-inset-top)] text-b-200">
+      {!isFinished && (
+        <header className="grid h-11 shrink-0 grid-cols-[28px_minmax(0,1fr)_28px] items-center px-5">
           <button
             type="button"
-            onClick={() => setIsDatePickerOpen(true)}
-            aria-label="꿈 기록 날짜 선택"
-            aria-haspopup="dialog"
-            aria-expanded={isDatePickerOpen}
-            className="inline-flex h-11 items-center justify-center gap-1 justify-self-center text-b-200"
+            disabled={isGenerating}
+            onClick={handleBack}
+            aria-label="이전 화면"
+            className="flex size-7 items-center justify-center bg-transparent"
           >
-            <span className="text-[16px] leading-6 font-medium whitespace-nowrap">
-              {formatDate(selectedDate)}
-            </span>
-
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              aria-hidden="true"
-              className="block size-6 shrink-0"
-            >
-              <path
-                d="M6 9L12 15L18 9"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <img src={`${ASSET_PATH}back.svg`} alt="" className="rotate-180" />
           </button>
-        ) : (
-          <span className="justify-self-center text-[16px] leading-6 font-medium">
-            꿈 기록
-          </span>
-        )}
 
-        <div aria-hidden="true" className="size-7" />
-      </header>
+          {screen === 'charge' ? (
+            <span className="justify-self-center text-[16px] leading-6 font-medium">토큰 충전</span>
+          ) : (
+            <button
+              type="button"
+              disabled={isGenerating}
+              onClick={() => setDatePickerOpen(true)}
+              aria-label="꿈 기록 날짜 선택"
+              aria-haspopup="dialog"
+              aria-expanded={datePickerOpen}
+              className="inline-flex h-11 items-center justify-center gap-1 justify-self-center bg-transparent"
+            >
+              <span className="text-[16px] leading-6 font-medium whitespace-nowrap">
+                {selectedDate.getMonth() + 1}월 {selectedDate.getDate()}일{' '}
+                {WEEKDAYS[selectedDate.getDay()]}요일
+              </span>
 
-      <main className="flex flex-1 flex-col px-5 pt-5">
-        {step === 'text' && (
+              <img src={`${ASSET_PATH}chevron.svg`} alt="" className="shrink-0 rotate-90" />
+            </button>
+          )}
+
+          <span aria-hidden="true" className="size-7" />
+        </header>
+      )}
+
+      <div className={['flex-1 px-5', isFinished ? 'pt-[154px] text-center' : 'pt-5'].join(' ')}>
+        {screen === 'text' && (
           <>
-            <section>
-              <h1 className="text-[18px] leading-[1.4] font-semibold">
-                오늘 밤, 무엇을 보았나요?
-              </h1>
+            <h1 className="text-[18px] leading-[1.4] font-semibold">오늘 밤, 무엇을 보았나요?</h1>
 
-              <p className="mt-3 text-[14px] leading-[1.5] text-b-600">
-                꿈에서 기억나는 순간들을
-                <br />
-                떠오르는 대로 편하게 작성해보세요.
-              </p>
-            </section>
+            <p className="mt-3 text-[14px] leading-[1.5] font-medium text-b-600">
+              꿈에서 기억나는 순간들을
+              <br />
+              떠오르는 대로 편하게 작성해보세요.
+            </p>
 
-            <section className="mt-6">
+            <div className="mt-6 flex h-[262px] flex-col rounded-3xl bg-n-900 p-5">
               <label htmlFor="dream-content" className="sr-only">
                 꿈 내용
               </label>
 
-              <div className="flex h-[262px] flex-col rounded-[24px] bg-n-900 p-5">
-                <textarea
-                  id="dream-content"
-                  value={content}
-                  onChange={(event) => {
-                    updateDraft({
-                      content: event.target.value,
-                      imageRequested: false,
-                    });
+              <textarea
+                id="dream-content"
+                value={draft.content}
+                maxLength={MAX_LENGTH}
+                placeholder="꿈의 내용을 자유롭게 작성해 주세요."
+                onChange={(event) => {
+                  updateDraft({
+                    content: event.target.value,
+                    imageRequested: false,
+                  });
+                  setMessage('');
+                }}
+                className="min-h-0 w-full flex-1 resize-none border-0 bg-transparent text-[14px]! leading-[1.5]! text-b-200 outline-none placeholder:text-b-600"
+              />
 
-                    setMessage('');
-                  }}
-                  placeholder="꿈의 내용을 자유롭게 작성해 주세요."
-                  maxLength={MAX_LENGTH}
-                  className="w-full flex-1 resize-none bg-transparent text-[14px] leading-[1.5] text-b-200 outline-none placeholder:text-b-600"
-                />
-
-                <p className="mt-3 text-right text-[12px] text-b-600">
-                  {content.length} / {MAX_LENGTH}
-                </p>
-              </div>
-            </section>
-          </>
-        )}
-
-        {step === 'emotion' && (
-          <>
-            <section>
-              <h1 className="text-[18px] leading-[1.4] font-semibold">
-                꿈속에서의 감정은 어땠나요?
-              </h1>
-
-              <p className="mt-3 text-[14px] leading-[1.5] text-b-600">
-                꿈에서 느꼈던 순간의 감정을 떠올려보고
-                <br />
-                가장 가까운 감정을 선택해 주세요.
+              <p className="mt-3 text-right text-[12px] text-b-600">
+                {draft.content.length} / {MAX_LENGTH}
               </p>
-            </section>
-
-            <EmotionSelector
-              selected={emotions}
-              onToggle={toggleEmotion}
-            />
+            </div>
           </>
         )}
 
-        {step === 'image' && (
+        {screen === 'emotion' && (
           <>
-            <section>
-              <h1 className="text-[18px] leading-[1.4] font-semibold">
-                이 꿈, 그림으로 남겨볼까요?
-              </h1>
+            <h1 className="text-[18px] leading-[1.4] font-semibold">꿈속에서의 감정은 어땠나요?</h1>
 
-              <p className="mt-3 text-[14px] leading-[1.5] text-b-600">
-                꿈에서 기억나는 장면과 분위기를 담아
-                <br />
-                나만의 꿈 이미지로 만들어보세요.
-              </p>
-            </section>
+            <p className="mt-3 text-[14px] leading-[1.5] font-medium text-b-600">
+              꿈에서 느꼈던 순간의 감정을 떠올려보고
+              <br />
+              가장 가까운 감정을 선택해 주세요.
+            </p>
 
-            <div className="mt-7 inline-flex w-fit items-center gap-2 rounded-full bg-n-900 px-3 py-2">
-              <span className="text-p-300">●</span>
-              <span className="text-[14px] font-medium">보유 토큰</span>
-              <span className="text-[12px] text-b-400">확인 전</span>
-            </div>
-
-            <div className="flex flex-1 items-center justify-center">
-              <div className="flex h-[245px] w-[260px] flex-col items-center justify-center rounded-[30px] bg-n-900">
-                <svg
-                  viewBox="0 0 100 100"
-                  width="90"
-                  height="90"
-                  fill="none"
-                  aria-hidden="true"
-                >
-                  <rect
-                    x="12"
-                    y="18"
-                    width="76"
-                    height="64"
-                    rx="12"
-                    stroke="#BCB3FF"
-                    strokeWidth="3"
-                  />
-
-                  <circle cx="37" cy="40" r="8" fill="#7A6CE3" />
-
-                  <path
-                    d="M20 71 43 51 57 63 70 44 82 60"
-                    stroke="#BCB3FF"
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-
-                <p className="mt-4 text-[13px] text-b-400">
-                  꿈을 그림으로 표현해 보세요
-                </p>
-              </div>
+            <div className="[&_button]:text-[18px]! [&_button]:font-semibold!">
+              <EmotionSelector selected={draft.emotions} onToggle={toggleEmotion} />
             </div>
           </>
         )}
 
-        {step === 'complete' && (
-          <div className="flex flex-1 flex-col items-center justify-center text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-n-800 text-[36px] text-p-300">
-              ✓
+        {screen === 'image' && (
+          <>
+            <h1 className="text-[18px] leading-[1.4] font-semibold">이 꿈, 그림으로 남겨볼까요?</h1>
+
+            <p className="mt-3 text-[14px] leading-[1.5] font-medium text-b-600">
+              꿈에서 기억나는 장면과 분위기를 담아
+              <br />
+              나만의 꿈 이미지로 만들어보세요.
+            </p>
+
+            <div
+              aria-label={`보유 토큰 ${tokens}개`}
+              className="mt-4 flex w-fit items-center gap-1.5 rounded-full px-2 py-1 drop-shadow-[0_0_8px_rgba(255,255,255,0.1)]"
+            >
+              <img src={`${ASSET_PATH}coin.svg`} alt="" />
+
+              <span className="text-[16px] leading-[1.3] font-semibold">{tokens}</span>
             </div>
 
-            <h1 className="mt-7 text-[22px] font-semibold">
-              꿈 내역을 임시로 보관했어요
+            <div className="relative mt-[50px] h-[274px] w-full">
+              <Glow className="top-[-49px]" />
+
+              <img
+                src={`${ASSET_PATH}painter.png`}
+                alt="꿈을 그리는 몽글"
+                width={223}
+                height={200}
+                className="absolute top-[21px] left-[calc(50%-3px)] h-[200px] w-[223px] max-w-none -translate-x-1/2 object-cover"
+              />
+            </div>
+          </>
+        )}
+
+        {isFinished && (
+          <>
+            <h1 className="text-[20px] leading-[1.4] font-semibold">
+              {screen === 'result' ? '꿈 이미지가 완성되었어요' : '기록한 꿈을 저장했어요'}
             </h1>
 
-            <p className="mt-3 text-[14px] leading-[1.6] text-b-400">
-              입력한 꿈과 감정을 브라우저에 임시 보관했습니다.
-              <br />
-              서버 저장은 API 연결 후 지원됩니다.
+            <p className="mt-3 text-[16px] leading-[1.5] font-medium text-b-400">
+              보관함에 소중히 담아두었어요.
             </p>
+
+            {screen === 'result' ? (
+              <DreamImage
+                key={imageVersion}
+                src={`${ASSET_PATH}dream-art.png`}
+                alt="꿈 이미지"
+                className="mt-[54px] h-[200px] w-full rounded-2xl"
+              />
+            ) : (
+              <div className="relative mt-[67px] h-[270px]">
+                <Glow className="top-[-90px]" />
+
+                <img
+                  src={`${ASSET_PATH}saved.png`}
+                  alt="꿈 기록을 반기는 몽글"
+                  width={188}
+                  height={169}
+                  className="relative mx-auto h-[169px] w-[188px] object-cover"
+                />
+              </div>
+            )}
+          </>
+        )}
+
+        {screen === 'charge' && (
+          <div className="flex flex-col gap-3.5">
+            <div className="flex items-center justify-between rounded-2xl bg-n-900 px-5 py-4">
+              <span className="text-[14px] leading-[1.5] font-medium text-b-600">보유 토큰</span>
+
+              <span className="text-[14px] leading-[1.5] font-semibold">{tokens} 개</span>
+            </div>
+
+            <div className="flex flex-col gap-6 rounded-2xl bg-n-900 px-5 py-4">
+              {[1, 5, 10].map((amount) => (
+                <div key={amount} className="flex items-center justify-between">
+                  <span className="text-[14px] leading-[1.5] font-medium">{amount} 토큰</span>
+
+                  <button
+                    type="button"
+                    disabled={isGenerating}
+                    onClick={() => handleCharge(amount)}
+                    aria-label={`${amount} 토큰 충전`}
+                    className="w-[100px] rounded-full bg-p-500 px-4 py-2 text-[14px]! leading-[1.3]! font-semibold! text-b-200 disabled:opacity-40"
+                  >
+                    1,000원
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         )}
-      </main>
+      </div>
 
-      <footer className="sticky bottom-0 bg-b-900 px-5 pt-4 pb-[max(24px,env(safe-area-inset-bottom))]">
+      <footer className="sticky bottom-0 z-10 bg-b-900 px-5 pt-2.5 pb-[max(8px,env(safe-area-inset-bottom))]">
         {storageWarning && (
-          <p
-            role="alert"
-            className="mb-4 text-center text-[13px] leading-[1.5] text-b-300"
-          >
+          <p role="alert" className="mb-3 text-center text-[13px] leading-[1.5] text-b-300">
             {storageWarning}
           </p>
         )}
 
         {message && (
-          <p
-            role="status"
-            className="mb-4 text-center text-[13px] leading-[1.5] text-b-300"
-          >
+          <p role="status" className="mb-3 text-center text-[13px] leading-[1.5] text-b-300">
             {message}
           </p>
         )}
 
-        {(step === 'text' || step === 'emotion') && (
-          <div
-            className={
-              step === 'emotion'
-                ? 'flex items-center justify-between gap-4'
-                : ''
-            }
-          >
-            {step === 'emotion' && (
-              <button
-                type="button"
-                onClick={handleBack}
-                className="h-12 w-[109px] text-[16px] font-semibold text-b-400"
-              >
-                이전
-              </button>
-            )}
+        {isGenerating && modal !== 'loading' && (
+          <SecondaryButton onClick={() => setModal('loading')}>
+            생성 중이에요 · 진행 상황 보기
+          </SecondaryButton>
+        )}
 
-            <button
-              type="button"
-              disabled={!canProceed}
+        {screen === 'text' && (
+          <PrimaryButton disabled={!draft.content.trim()} onClick={handleNext}>
+            다음
+          </PrimaryButton>
+        )}
+
+        {screen === 'emotion' && (
+          <div className="flex items-center justify-between gap-4">
+            <SecondaryButton onClick={handleBack} className="w-[109px]">
+              이전
+            </SecondaryButton>
+
+            <PrimaryButton
+              disabled={draft.emotions.length === 0}
               onClick={handleNext}
-              style={{
-                border: '2px solid rgba(255,255,255,0.4)',
-              }}
-              className={[
-                'h-14 rounded-[16px] text-[16px] font-semibold transition-colors',
-                'focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-p-300',
-                step === 'emotion' ? 'w-[109px]' : 'w-full',
-                canProceed
-                  ? 'bg-p-500 text-b-200 shadow-[0_0_8px_rgba(255,255,255,0.25)] active:bg-p-900'
-                  : 'cursor-not-allowed bg-n-200 text-b-200',
-              ].join(' ')}
+              className="w-[109px]"
             >
               다음
-            </button>
+            </PrimaryButton>
           </div>
         )}
 
-        {step === 'image' && (
+        {screen === 'image' && (
           <div className="flex flex-col gap-3">
-            <button
-              type="button"
-              onClick={handleGenerateImage}
-              className="flex h-14 items-center justify-center gap-3 rounded-[16px] border-2 border-white/30 bg-p-500 text-[16px] font-semibold shadow-[0_0_8px_rgba(255,255,255,0.25)]"
-            >
+            <PrimaryButton disabled={isGenerating} onClick={handleGenerate}>
               그림으로 남기기
-              <span className="text-[14px]">● 1</span>
-            </button>
+              <TokenCost />
+            </PrimaryButton>
 
-            <button
-              type="button"
-              onClick={handleSkipImage}
-              className="h-11 text-[16px] font-semibold text-b-400"
-            >
+            <SecondaryButton disabled={isGenerating} onClick={handleSaveWithoutImage}>
               다음에 만들어볼게요
-            </button>
+            </SecondaryButton>
           </div>
         )}
 
-        {step === 'complete' && (
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            className="h-14 w-full rounded-[16px] bg-n-200 text-[16px] font-semibold text-p-900"
-          >
-            홈으로 돌아가기
-          </button>
+        {isFinished && (
+          <div className="flex flex-col gap-3">
+            <PrimaryButton disabled={isGenerating} onClick={() => navigate('/')}>
+              홈으로 돌아가기
+            </PrimaryButton>
+
+            {screen === 'result' && (
+              <SecondaryButton disabled={isGenerating} onClick={handleGenerate}>
+                이미지 다시 생성하기
+                <TokenCost muted />
+              </SecondaryButton>
+            )}
+          </div>
         )}
       </footer>
 
-      {isDatePickerOpen && (
+      {datePickerOpen && (
         <DreamDatePicker
           value={selectedDate}
           onChange={selectDate}
-          onClose={() => setIsDatePickerOpen(false)}
+          onClose={() => setDatePickerOpen(false)}
         />
+      )}
+
+      {modal === 'loading' && (
+        <FlowModal title="이미지 생성 중" onClose={() => setModal(null)}>
+          <button
+            type="button"
+            onClick={() => setModal(null)}
+            aria-label="진행 창 닫기"
+            className="mb-5 ml-auto flex size-7 items-center justify-center bg-transparent"
+          >
+            <img src={`${ASSET_PATH}close.svg`} alt="" />
+          </button>
+
+          <div className="relative mx-auto mb-3 h-[112px] w-[146px] overflow-hidden">
+            <img
+              src={`${ASSET_PATH}painter.png`}
+              alt=""
+              className="absolute top-[-13px] left-0 h-[131px] w-[146px] max-w-none"
+            />
+          </div>
+
+          <h2 role="status" className="text-center text-[18px] leading-[1.4] font-semibold">
+            이미지를 생성하고 있어요...
+          </h2>
+        </FlowModal>
+      )}
+
+      {modal === 'tokens' && (
+        <FlowModal title="토큰이 부족해요" onClose={() => setModal(null)}>
+          <h2 className="text-center text-[18px] leading-[1.4] font-semibold">토큰이 부족해요!</h2>
+
+          <dl className="mt-10 mb-4 flex flex-col gap-2 text-[12px] leading-[1.5] text-b-300">
+            <div className="flex items-center justify-between">
+              <dt>필요한 토큰</dt>
+              <dd>1개</dd>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <dt>보유 토큰</dt>
+              <dd>{tokens}개</dd>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-b-600 pt-2">
+              <dt>부족한 토큰</dt>
+              <dd>{Math.max(0, 1 - tokens)}개</dd>
+            </div>
+          </dl>
+
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setModal(null);
+                setScreen('charge');
+              }}
+              className="min-h-9 w-full rounded-lg border! border-solid! border-white/40! bg-p-500 px-2.5 py-2 text-[14px]! leading-[1.3]! font-semibold! text-b-200"
+            >
+              충전하고 바로 생성하기
+            </button>
+
+            <button
+              type="button"
+              onClick={handleReward}
+              className="min-h-9 w-full rounded-lg border! border-solid! border-white/40! bg-n-200 px-2.5 py-2 text-[14px]! leading-[1.3]! font-semibold! text-p-900"
+            >
+              광고 시청 후 생성하기
+            </button>
+          </div>
+        </FlowModal>
       )}
     </div>
   );
