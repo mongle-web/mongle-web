@@ -661,7 +661,7 @@ function DreamRecordPage() {
               <dd>{tokens}개</dd>
             </div>
 
-            <div className="flex items-center justify-between border-t border-b-600 pt-2">
+            <div className="flex items-center justify-between border-t border-t-b-600 pt-2">
               <dt>부족한 토큰</dt>
               <dd>{Math.max(0, 1 - tokens)}개</dd>
             </div>
