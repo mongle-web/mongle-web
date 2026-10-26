@@ -6,6 +6,7 @@ export interface DreamStorySegment {
 }
 
 // 꿈 상세 정보
+// TODO: 백엔드 API 응답 구조가 확정되면 필드 이름을 맞춰서 수정
 export interface DreamDetail {
   id: number;
   date: string; // 'YYYY-MM-DD'
@@ -16,3 +17,13 @@ export interface DreamDetail {
   emotions: string[]; // 사용자가 고른 감정 (1~3개)
   keywords: string[]; // AI가 뽑은 키워드 (1~5개)
 }
+
+// 꿈 수정 요청 (제목 · 내용만 수정 가능, 감정 · 키워드는 수정 불가)
+export interface DreamDetailUpdate {
+  title: string;
+  content: string;
+}
+
+// 수정 화면 글자 수 제한
+export const DREAM_TITLE_MAX_LENGTH = 20;
+export const DREAM_CONTENT_MAX_LENGTH = 500;

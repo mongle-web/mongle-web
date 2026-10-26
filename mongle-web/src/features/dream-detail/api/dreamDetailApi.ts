@@ -1,6 +1,9 @@
 // import { apiClient } from '@/api/client';
-import { getDreamDetailMock } from '@/features/dream-detail/mocks/dreamDetailMockData';
-import type { DreamDetail } from '@/features/dream-detail/types/dreamDetail';
+import {
+  getDreamDetailMock,
+  updateDreamDetailMock,
+} from '@/features/dream-detail/mocks/dreamDetailMockData';
+import type { DreamDetail, DreamDetailUpdate } from '@/features/dream-detail/types/dreamDetail';
 
 // 찾는 꿈이 없을 때 (삭제됐거나 잘못된 주소)
 export class DreamNotFoundError extends Error {
@@ -12,14 +15,30 @@ export class DreamNotFoundError extends Error {
 
 // 꿈 상세 조회
 // TODO: 백엔드 API가 나오면 아래 Mock 부분을 지우고 주석 처리된 코드로 교체
-// const response = await apiClient.get<DreamDetail>(`/dreams/${dreamId}`);
-// return response.data;
-// (404 응답이면 DreamNotFoundError를 던지도록 처리)
+//   const response = await apiClient.get<DreamDetail>(`/dreams/${dreamId}`);
+//   return response.data;
+//   (404 응답이면 DreamNotFoundError를 던지도록 처리)
 export const getDreamDetail = async (dreamId: number): Promise<DreamDetail> => {
   // 실제 네트워크 요청처럼 보이도록 약간 지연 (로딩 UI 확인용)
   await new Promise((resolve) => setTimeout(resolve, 300));
 
   const dream = getDreamDetailMock(dreamId);
+  if (!dream) throw new DreamNotFoundError();
+
+  return dream;
+};
+
+// 꿈 제목 · 내용 수정
+// TODO: 백엔드 API가 나오면 아래 Mock 부분을 지우고 주석 처리된 코드로 교체
+//   const response = await apiClient.patch<DreamDetail>(`/dreams/${dreamId}`, update);
+//   return response.data;
+export const updateDreamDetail = async (
+  dreamId: number,
+  update: DreamDetailUpdate,
+): Promise<DreamDetail> => {
+  await new Promise((resolve) => setTimeout(resolve, 300));
+
+  const dream = updateDreamDetailMock(dreamId, update);
   if (!dream) throw new DreamNotFoundError();
 
   return dream;
