@@ -1,3 +1,5 @@
+import { useNavigate } from 'react-router-dom';
+
 import trashIcon from '@/assets/icons/calendar/trash.svg';
 import DreamImage from '@/components/common/DreamImage';
 import type { CalendarDream } from '@/features/calendar/types/calendar';
@@ -10,10 +12,23 @@ interface DreamSummaryCardProps {
 
 // 캘린더에서 날짜를 눌렀을 때 아래에 펼쳐지는 꿈 기록 카드
 // 이미지가 있으면 대표 이미지 + 정보, 없으면 정보만 표시
-// TODO: 꿈 상세 페이지(feat/dream-detail)가 생기면 카드 클릭 시 상세로 이동
+// 카드를 누르면 꿈 상세(/dreams/:id)로 이동
 function DreamSummaryCard({ dream, onDelete }: DreamSummaryCardProps) {
+  const navigate = useNavigate();
+
+  const goToDetail = () => navigate(`/dreams/${dream.id}`);
+
   return (
-    <article className="flex flex-col gap-4 rounded-3xl bg-n-900 p-5">
+    <article
+      role="link"
+      tabIndex={0}
+      aria-label={`${dream.title} 상세 보기`}
+      onClick={goToDetail}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') goToDetail();
+      }}
+      className="flex cursor-pointer flex-col gap-4 rounded-3xl bg-n-900 p-5"
+    >
       {dream.thumbnailUrl && (
         <DreamImage src={dream.thumbnailUrl} alt={dream.title} className="h-[158px] rounded-2xl" />
       )}
@@ -30,7 +45,10 @@ function DreamSummaryCard({ dream, onDelete }: DreamSummaryCardProps) {
           <button
             type="button"
             aria-label="꿈 삭제"
-            onClick={() => onDelete?.(dream)}
+            onClick={(event) => {
+              event.stopPropagation(); // 카드 클릭(상세 이동)으로 번지지 않게
+              onDelete?.(dream);
+            }}
             className="flex size-[18px] shrink-0 cursor-pointer items-center justify-center"
           >
             <img src={trashIcon} alt="" className="size-[18px]" />

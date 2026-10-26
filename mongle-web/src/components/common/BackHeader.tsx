@@ -1,10 +1,12 @@
+import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 interface BackHeaderProps {
   title: string;
+  rightSlot?: ReactNode;
 }
 
-function BackHeader({ title }: BackHeaderProps) {
+function BackHeader({ title, rightSlot }: BackHeaderProps) {
   const navigate = useNavigate();
 
   const handleBack = () => {
@@ -32,7 +34,7 @@ function BackHeader({ title }: BackHeaderProps) {
 
       <h1 className="text-center text-[16px] leading-[1.5] font-medium text-b-200">{title}</h1>
 
-      <div aria-hidden="true" className="size-7" />
+      {rightSlot ?? <div aria-hidden="true" className="size-7" />}
     </header>
   );
 }
