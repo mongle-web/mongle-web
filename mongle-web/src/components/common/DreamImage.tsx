@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { MouseEvent } from 'react';
 
 interface DreamImageProps {
   src: string;
@@ -16,7 +17,8 @@ function DreamImage({ src, alt, className = '' }: DreamImageProps) {
   const [status, setStatus] = useState<ImageStatus>('loading');
   const [retryCount, setRetryCount] = useState(0);
 
-  const handleRetry = () => {
+  const handleRetry = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation(); // 카드 안에 있을 때 카드 클릭(이동)으로 번지지 않게
     setStatus('loading');
     setRetryCount((count) => count + 1); // key가 바뀌면 <img>를 새로 만들어 다시 요청
   };
