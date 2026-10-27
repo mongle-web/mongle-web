@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
+import { FlowModal, Glow, PrimaryButton, SecondaryButton, TokenCost } from '@/components/common';
 import DreamImage from '@/components/common/DreamImage';
 import DreamDatePicker from '@/features/dream-record/components/DreamDatePicker';
 import EmotionSelector from '@/features/dream-record/components/EmotionSelector';
@@ -21,123 +22,6 @@ type ModalType = 'loading' | 'tokens' | null;
 
 const ASSET_PATH = '/dream-record/';
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
-
-function PrimaryButton({
-  className = '',
-  children,
-  ...props
-}: ButtonHTMLAttributes<HTMLButtonElement>) {
-  return (
-    <button
-      {...props}
-      type="button"
-      className={[
-        'flex min-h-14 w-full items-center justify-center gap-2.5',
-        'rounded-2xl border-2! border-solid! border-white/40!',
-        'bg-p-500 px-3 py-2.5 text-[16px]! leading-[1.3]! font-semibold! text-b-200',
-        'shadow-[0_0_8px_rgba(255,255,255,0.25)]',
-        'transition-colors active:bg-p-900',
-        'disabled:cursor-default disabled:bg-n-200 disabled:shadow-none',
-        'focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-p-300',
-        className,
-      ].join(' ')}
-    >
-      {children}
-    </button>
-  );
-}
-
-function SecondaryButton({
-  className = '',
-  children,
-  ...props
-}: ButtonHTMLAttributes<HTMLButtonElement>) {
-  return (
-    <button
-      {...props}
-      type="button"
-      className={[
-        'flex min-h-10 w-full items-center justify-center gap-2.5',
-        'rounded-2xl bg-transparent px-3 py-2',
-        'text-[16px]! leading-[1.3]! font-semibold! text-b-400',
-        'disabled:opacity-40',
-        'focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-p-300',
-        className,
-      ].join(' ')}
-    >
-      {children}
-    </button>
-  );
-}
-
-function TokenCost({ muted = false }: { muted?: boolean }) {
-  return (
-    <span className="inline-flex items-center gap-1">
-      <img src={`${ASSET_PATH}${muted ? 'coin-muted' : 'coin'}.svg`} alt="" className="shrink-0" />
-      <span>1</span>
-    </span>
-  );
-}
-
-function Glow({ className = '' }: { className?: string }) {
-  return (
-    <img
-      src={`${ASSET_PATH}glow.svg`}
-      alt=""
-      aria-hidden="true"
-      className={[
-        'pointer-events-none absolute left-[calc(50%-8px)]',
-        'max-w-none -translate-x-1/2 rotate-[14.85deg]',
-        className,
-      ].join(' ')}
-    />
-  );
-}
-
-function FlowModal({
-  title,
-  onClose,
-  children,
-}: {
-  title: string;
-  onClose: () => void;
-  children: ReactNode;
-}) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-
-    dialog?.showModal();
-
-    return () => dialog?.close();
-  }, []);
-
-  return (
-    <dialog
-      ref={dialogRef}
-      aria-label={title}
-      className={[
-        'fixed inset-0 m-auto w-[248px]',
-        'max-h-[calc(100dvh-40px)] max-w-[calc(100vw-40px)]',
-        'rounded-3xl border-0 bg-n-900/40 p-5 text-b-200',
-        'shadow-[0_0_20px_rgba(255,255,255,0.3)] backdrop-blur-xl',
-        'backdrop:bg-black/25',
-      ].join(' ')}
-      onCancel={(event) => {
-        event.preventDefault();
-        onClose();
-      }}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) {
-          onClose();
-        }
-      }}
-    >
-      <div onClick={(event) => event.stopPropagation()}>{children}</div>
-    </dialog>
-  );
-}
 
 function DreamRecordPage() {
   const navigate = useNavigate();
