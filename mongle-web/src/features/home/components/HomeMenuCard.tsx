@@ -18,7 +18,7 @@ const MENU_CONTENT = {
   archive: {
     title: '지난 꿈 보관함',
     image: dreamArchiveImage,
-    path: '/',
+    path: '/archive',
     // 피그마: 카드 위에서 약 62px, 카드가 넓어져도 가로 가운데 유지
     // 양쪽 끝이 점점 흐려짐
     imageClassName:

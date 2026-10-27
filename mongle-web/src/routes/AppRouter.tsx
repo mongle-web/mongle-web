@@ -2,6 +2,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 
 import AppLayout from '@/components/layout/AppLayout';
 import CalendarPage from '@/features/calendar/pages/CalendarPage';
+import DreamArchivePage from '@/features/dream-archive/pages/DreamArchivePage';
 import DreamAnalysisPage from '@/features/dream-analysis/pages/DreamAnalysisPage';
 import DreamDetailPage from '@/features/dream-detail/pages/DreamDetailPage';
 import DreamEditPage from '@/features/dream-detail/pages/DreamEditPage';
@@ -24,6 +25,7 @@ function AppRouter() {
           <Route path="/dreams/analysis" element={<DreamAnalysisPage />} />
           <Route path="/dreams/:dreamId" element={<DreamDetailPage />} />
           <Route path="/dreams/:dreamId/edit" element={<DreamEditPage />} />
+          <Route path="/archive" element={<DreamArchivePage />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup/nickname" element={<NicknamePage />} />
