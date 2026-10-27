@@ -7,6 +7,7 @@ import { BackHeader } from '@/components/common';
 import CalendarDialog from '@/features/calendar/components/CalendarDialog';
 import { useDeleteDream } from '@/features/calendar/hooks/useDeleteDream';
 import ArchiveDreamCard from '@/features/dream-archive/components/ArchiveDreamCard';
+import ArchiveEmptyState from '@/features/dream-archive/components/ArchiveEmptyState';
 import ArchiveSearchBar from '@/features/dream-archive/components/ArchiveSearchBar';
 import ArchiveTabs from '@/features/dream-archive/components/ArchiveTabs';
 import {
@@ -36,9 +37,13 @@ function DreamArchivePage() {
   const [search, setSearch] = useState('');
   const [dreamToDelete, setDreamToDelete] = useState<ArchiveDream | null>(null);
 
-  // TODO: 불러오는 중 / 불러오기 실패 / 꿈이 없을 때 / 검색 결과가 없을 때 화면은 피그마 디자인 요청 중
-  const { data: recordedDreams = [] } = useArchiveDreams();
+  // TODO: 불러오는 중 / 불러오기 실패 / 검색 결과가 없을 때 / 연결된 꿈이 없을 때 화면은 피그마 디자인 요청 중
+  const { data: recordedDreams = [], isSuccess: isRecordedLoaded } = useArchiveDreams();
   const { data: connectedDreams = [] } = useConnectedDreams();
+
+  // 기록한 꿈이 하나도 없으면 검색창 · 목록 대신 안내 화면 (피그마: iPhone 16 - 119)
+  const isRecordedEmpty =
+    selectedTab === 'recorded' && isRecordedLoaded && recordedDreams.length === 0;
 
   const deleteDreamMutation = useDeleteDream();
   const deleteConnectedMutation = useDeleteConnectedDream();
@@ -59,7 +64,8 @@ function DreamArchivePage() {
 
   return (
     <>
-      <div className="min-h-dvh bg-b-900">
+      {/* 빈 화면의 빛 번짐이 화면 밖으로 나가도 가로 스크롤이 생기지 않게 overflow-x-clip */}
+      <div className="relative min-h-dvh overflow-x-clip bg-b-900">
         <BackHeader title="지난 꿈 돌아보기" />
 
         {/* 피그마: 위 20 · 좌우 20 · 아래 64, 탭과 목록 사이 28 */}
@@ -67,33 +73,37 @@ function DreamArchivePage() {
           <ArchiveTabs selectedTab={selectedTab} onChange={setSelectedTab} />
 
           {/* 피그마: 검색창과 카드 목록 사이 12, 카드 사이 8 */}
-          <div className="flex flex-col gap-3">
-            <ArchiveSearchBar value={search} onChange={setSearch} />
+          {!isRecordedEmpty && (
+            <div className="flex flex-col gap-3">
+              <ArchiveSearchBar value={search} onChange={setSearch} />
 
-            <ul className="flex flex-col gap-2">
-              {selectedTab === 'recorded'
-                ? filterBySearch(recordedDreams, search).map((dream) => (
-                    <li key={dream.id}>
-                      <ArchiveDreamCard
-                        dream={dream}
-                        onClick={() => navigate(`/dreams/${dream.id}`)}
-                        onDelete={() => setDreamToDelete(dream)}
-                      />
-                    </li>
-                  ))
-                : filterBySearch(connectedDreams, search).map((dream) => (
-                    <li key={dream.id}>
-                      {/* TODO: 꿈 연결 결과 화면이 생기면 카드 클릭 시 이동 */}
-                      <ArchiveDreamCard
-                        dream={dream}
-                        connectedDreamTitles={dream.connectedDreamTitles}
-                        onDelete={() => setDreamToDelete(dream)}
-                      />
-                    </li>
-                  ))}
-            </ul>
-          </div>
+              <ul className="flex flex-col gap-2">
+                {selectedTab === 'recorded'
+                  ? filterBySearch(recordedDreams, search).map((dream) => (
+                      <li key={dream.id}>
+                        <ArchiveDreamCard
+                          dream={dream}
+                          onClick={() => navigate(`/dreams/${dream.id}`)}
+                          onDelete={() => setDreamToDelete(dream)}
+                        />
+                      </li>
+                    ))
+                  : filterBySearch(connectedDreams, search).map((dream) => (
+                      <li key={dream.id}>
+                        {/* TODO: 꿈 연결 결과 화면이 생기면 카드 클릭 시 이동 */}
+                        <ArchiveDreamCard
+                          dream={dream}
+                          connectedDreamTitles={dream.connectedDreamTitles}
+                          onDelete={() => setDreamToDelete(dream)}
+                        />
+                      </li>
+                    ))}
+              </ul>
+            </div>
+          )}
         </main>
+
+        {isRecordedEmpty && <ArchiveEmptyState />}
       </div>
 
       <AnimatePresence>
