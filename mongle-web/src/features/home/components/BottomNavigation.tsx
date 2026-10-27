@@ -20,7 +20,7 @@ interface NavItem {
 // TODO: 보관함 / 캘린더 페이지가 개발되면 path만 실제 경로로 변경 (예: '/archive', '/calendar')
 // 현재는 모든 탭이 같은 경로('/')입니다
 const NAV_ITEMS: NavItem[] = [
-  { tab: 'archive', label: '꿈 보관함', path: '/', Icon: ArchiveIcon },
+  { tab: 'archive', label: '꿈 보관함', path: '/archive', Icon: ArchiveIcon },
   { tab: 'home', label: '홈', path: '/', Icon: HomeIcon },
   { tab: 'calendar', label: '캘린더', path: '/calendar', Icon: CalendarIcon },
 ];
