@@ -1,11 +1,14 @@
 import { useState } from 'react';
 
+import { useNavigate } from 'react-router-dom';
+
 import cloudP200 from '@/assets/images/home/cloud_p-200.png';
 import cloudP500 from '@/assets/images/home/cloud_p-500.png';
 import homeCharacter from '@/assets/images/home/home_character.png';
 import ArrowIcon from '@/components/icons/ArrowIcon';
 import { WEEKDAYS } from '@/features/calendar/utils/calendar';
 import RecordButton from '@/features/home/components/RecordButton';
+import { LOGIN_PATH } from '@/hooks/useAuth';
 
 // 예: 2026. 10. 02 (금)
 const formatHeroDate = (date: Date) => {
@@ -16,10 +19,21 @@ const formatHeroDate = (date: Date) => {
   return `${year}. ${month}. ${day} (${WEEKDAYS[date.getDay()]})`;
 };
 
-function HomeHeroCard() {
+interface HomeHeroCardProps {
+  isLoggedIn: boolean;
+}
+
+function HomeHeroCard({ isLoggedIn }: HomeHeroCardProps) {
+  const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState(() => new Date());
 
   const moveDate = (offset: number) => {
+    // 로그아웃 상태면 로그인 페이지로
+    if (!isLoggedIn) {
+      navigate(LOGIN_PATH);
+      return;
+    }
+
     setSelectedDate((prev) => {
       const next = new Date(prev);
       next.setDate(prev.getDate() + offset);
@@ -72,7 +86,7 @@ function HomeHeroCard() {
       />
 
       <div className="absolute inset-x-5 top-[164px]">
-        <RecordButton date={selectedDate} />
+        <RecordButton date={selectedDate} isLoggedIn={isLoggedIn} />
       </div>
     </div>
   );

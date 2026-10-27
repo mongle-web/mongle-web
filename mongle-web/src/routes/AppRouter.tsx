@@ -8,6 +8,10 @@ import DreamEditPage from '@/features/dream-detail/pages/DreamEditPage';
 import DreamImageResultPage from '@/features/dream-record/pages/DreamImageResultPage';
 import DreamRecordPage from '@/features/dream-record/pages/DreamRecordPage';
 import HomePage from '@/features/home/pages/HomePage';
+import LoginPage from '@/features/login/pages/LoginPage';
+import NicknamePage from '@/features/login/pages/NicknamePage';
+import WelcomePage from '@/features/login/pages/WelcomePage';
+import ProfilePage from '@/features/profile/pages/ProfilePage';
 
 function AppRouter() {
   return (
@@ -21,6 +25,10 @@ function AppRouter() {
           <Route path="/dreams/:dreamId" element={<DreamDetailPage />} />
           <Route path="/dreams/:dreamId/edit" element={<DreamEditPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup/nickname" element={<NicknamePage />} />
+          <Route path="/signup/welcome" element={<WelcomePage />} />
+          <Route path="/profile" element={<ProfilePage />} />
         </Routes>
       </AppLayout>
     </BrowserRouter>

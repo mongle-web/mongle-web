@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 
-// TODO: 마이페이지가 생기면 경로만 바꾸기 (예: '/mypage')
-const PROFILE_PATH = '/';
+const PROFILE_PATH = '/profile';
 
 // 로고 · 프로필 아이콘 공통 헤더 (피그마: 높이 24)
 function Header() {

@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 
 import dreamArchiveImage from '@/assets/images/home/dream_archive.svg';
 import dreamLinkImage from '@/assets/images/home/dream_link.svg';
+import { LOGIN_PATH } from '@/hooks/useAuth';
 
 type HomeMenuCardType = 'link' | 'archive';
 
@@ -30,15 +31,16 @@ const MENU_CONTENT = {
 
 interface HomeMenuCardProps {
   type: HomeMenuCardType;
+  isLoggedIn: boolean;
 }
 
 // 홈 2열 메뉴 카드 (꿈의 연결고리 / 지난 꿈 보관함)
-function HomeMenuCard({ type }: HomeMenuCardProps) {
+function HomeMenuCard({ type, isLoggedIn }: HomeMenuCardProps) {
   const navigate = useNavigate();
   const { title, image, path, imageClassName } = MENU_CONTENT[type];
 
   const handleClick = () => {
-    navigate(path);
+    navigate(isLoggedIn ? path : LOGIN_PATH);
   };
 
   return (
