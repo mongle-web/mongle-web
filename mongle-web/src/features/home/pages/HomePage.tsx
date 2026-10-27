@@ -4,10 +4,13 @@ import BottomNavigation from '@/features/home/components/BottomNavigation';
 import DreamAnalyzeCard from '@/features/home/components/DreamAnalyzeCard';
 import HomeHeroCard from '@/features/home/components/HomeHeroCard';
 import HomeMenuCard from '@/features/home/components/HomeMenuCard';
+import { useAuth } from '@/hooks/useAuth';
 // import RecentDreamCard from '@/features/home/components/RecentDreamCard';
 // import { recentDreams } from '@/features/home/mocks/homeMockData';
 
 function HomePage() {
+  const { isLoggedIn } = useAuth();
+
   return (
     <>
       <div className="relative isolate min-h-screen bg-b-900 px-5 pt-[14px] pb-28">
@@ -20,23 +23,23 @@ function HomePage() {
         <Header />
 
         <h1 className="mt-6 text-[20px] leading-[1.4] font-semibold text-b-200">
-          밤사이
+          {isLoggedIn ? '밤사이' : '꿈속 이야기를'}
           <br />
-          어떤 일이 있었나요?
+          {isLoggedIn ? '어떤 일이 있었나요?' : '몽글과 함께 기록해 볼까요?'}
         </h1>
 
         <div className="mt-3">
-          <HomeHeroCard />
+          <HomeHeroCard isLoggedIn={isLoggedIn} />
         </div>
 
         <section className="mt-5 flex flex-col gap-2">
           {/* TODO: 임시 키워드 */}
-          <DreamAnalyzeCard keyword="불안" />
+          <DreamAnalyzeCard keyword="불안" isLoggedIn={isLoggedIn} />
 
           {/* 피그마: 카드 사이 8px */}
           <div className="grid grid-cols-2 gap-2">
-            <HomeMenuCard type="link" />
-            <HomeMenuCard type="archive" />
+            <HomeMenuCard type="link" isLoggedIn={isLoggedIn} />
+            <HomeMenuCard type="archive" isLoggedIn={isLoggedIn} />
           </div>
         </section>
 

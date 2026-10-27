@@ -1,18 +1,20 @@
 import { useNavigate } from 'react-router-dom';
 
 import { toDateKey } from '@/features/calendar/utils/calendar';
+import { LOGIN_PATH } from '@/hooks/useAuth';
 
 interface RecordButtonProps {
   // 기록 페이지에서 처음 보여줄 날짜
   date: Date;
+  isLoggedIn: boolean;
 }
 
 // 피그마 유리 효과는 CSS로 근사: 뒤 배경 흐림 + 왼쪽 위 하이라이트
-function RecordButton({ date }: RecordButtonProps) {
+function RecordButton({ date, isLoggedIn }: RecordButtonProps) {
   const navigate = useNavigate();
 
   const handleClick = () => {
-    navigate(`/dreams/new?date=${toDateKey(date)}`);
+    navigate(isLoggedIn ? `/dreams/new?date=${toDateKey(date)}` : LOGIN_PATH);
   };
 
   return (

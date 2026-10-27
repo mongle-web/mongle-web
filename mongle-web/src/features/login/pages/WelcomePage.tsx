@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 
+import { authStorage } from '@/api/authStorage';
 import welcomeIcon from '@/assets/images/login/WelcomeIcon.png';
 import GlowBackground from '@/features/login/components/GlowBackground';
 
@@ -8,6 +9,8 @@ function WelcomePage() {
   const navigate = useNavigate();
 
   const handleStart = () => {
+    // TODO: 카카오 로그인 연동 후 제거 (임시: 흐름 확인용 토큰 저장 → 홈이 로그인 화면으로 보임)
+    authStorage.setAccessToken('temp-token');
     navigate('/');
   };
 

@@ -1,18 +1,21 @@
 import { useNavigate } from 'react-router-dom';
 
+import { LOGIN_PATH } from '@/hooks/useAuth';
+
 const DREAM_ANALYSIS_PATH = '/dreams/analysis';
 
 interface DreamAnalyzeCardProps {
   // 이번 달 가장 많이 나온 감정 키워드 (예: '불안')
   keyword: string;
+  isLoggedIn: boolean;
 }
 
 // 꿈 분석 기록 카드
-function DreamAnalyzeCard({ keyword }: DreamAnalyzeCardProps) {
+function DreamAnalyzeCard({ keyword, isLoggedIn }: DreamAnalyzeCardProps) {
   const navigate = useNavigate();
 
   const handleArrowClick = () => {
-    navigate(DREAM_ANALYSIS_PATH);
+    navigate(isLoggedIn ? DREAM_ANALYSIS_PATH : LOGIN_PATH);
   };
 
   return (
@@ -40,8 +43,14 @@ function DreamAnalyzeCard({ keyword }: DreamAnalyzeCardProps) {
       {/* 감정 키워드 말풍선 */}
       <div className="relative flex w-full items-center gap-2.5 rounded-full bg-n-800 px-3 py-1.5">
         <p className="relative z-10 text-[14px] leading-[1.5] font-medium text-b-400">
-          이번달에는 <span className="font-semibold text-p-300">‘{keyword}’</span> 감정 키워드가
-          많이 나왔어요.
+          {isLoggedIn ? (
+            <>
+              이번달에는 <span className="font-semibold text-p-300">‘{keyword}’</span> 감정 키워드가
+              많이 나왔어요.
+            </>
+          ) : (
+            '이번 달의 꿈에서는 어떤 흐름이 나타났을까요?'
+          )}
         </p>
 
         {/* 말풍선 꼬리 */}
