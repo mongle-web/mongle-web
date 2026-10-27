@@ -11,6 +11,7 @@ import HomePage from '@/features/home/pages/HomePage';
 import LoginPage from '@/features/login/pages/LoginPage';
 import NicknamePage from '@/features/login/pages/NicknamePage';
 import WelcomePage from '@/features/login/pages/WelcomePage';
+import ProfilePage from '@/features/profile/pages/ProfilePage';
 
 function AppRouter() {
   return (
@@ -27,6 +28,7 @@ function AppRouter() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup/nickname" element={<NicknamePage />} />
           <Route path="/signup/welcome" element={<WelcomePage />} />
+          <Route path="/profile" element={<ProfilePage />} />
         </Routes>
       </AppLayout>
     </BrowserRouter>
