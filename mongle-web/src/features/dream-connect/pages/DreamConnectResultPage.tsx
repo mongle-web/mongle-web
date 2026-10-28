@@ -64,8 +64,8 @@ function DreamConnectResultPage() {
 
       {result && (
         // 피그마: 위 20 · 좌우 20, 제목 카드와 아래 사이 8, 카드 사이 16
-        // 아래 148 = 끝까지 스크롤했을 때 마지막 + 버튼이 아래 고정 버튼 바로 위에 오도록 (피그마 화면 높이 1294 기준)
-        <main className="flex flex-col gap-2 px-5 pt-5 pb-[148px]">
+        // 아래 168 = 끝까지 스크롤했을 때 + 버튼과 "그림으로 남기기" 사이 18 (피그마 iPhone 16 - 121: + 아래 끝이 화면 아래에서 168)
+        <main className="flex flex-col gap-2 px-5 pt-5 pb-[168px]">
           <section className="rounded-3xl bg-n-900 p-5">
             <h2 className="text-[18px] leading-[1.4] font-semibold text-b-200">{result.name}</h2>
           </section>
