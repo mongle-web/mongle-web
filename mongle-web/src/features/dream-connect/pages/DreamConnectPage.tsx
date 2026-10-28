@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
-import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { BackHeader, PrimaryButton } from '@/components/common';
 import ConnectDreamCard from '@/features/dream-connect/components/ConnectDreamCard';
@@ -9,21 +10,32 @@ import ConnectSortToggle from '@/features/dream-connect/components/ConnectSortTo
 import { useConnectableDreams } from '@/features/dream-connect/hooks/useConnectableDreams';
 import { useConnectDreams } from '@/features/dream-connect/hooks/useConnectDreams';
 import { MIN_CONNECT_DREAMS } from '@/features/dream-connect/types/dreamConnect';
-import type { ConnectSort } from '@/features/dream-connect/types/dreamConnect';
+import type { ConnectAddState, ConnectSort } from '@/features/dream-connect/types/dreamConnect';
 
 // 꿈 연결하기 - 꿈 선택 (/connect)
+// 결과 화면 "+"로 들어오면 연결된 꿈에 더하거나 빼서 다시 연결
 // 피그마: iPhone 16 - 44(최신순) · 75(오래된순) · 48(선택) · 117(연결 중)
 function DreamConnectPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  // 결과 화면 "+"로 들어오면 이미 연결된 꿈이 체크된 채로 시작
+  const addState = (useLocation().state as ConnectAddState | null) ?? undefined;
 
   const [sort, setSort] = useState<ConnectSort>('LATEST');
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [selectedIds, setSelectedIds] = useState<number[]>(addState?.connectedDreamIds ?? []);
 
   // TODO: 불러오는 중 / 불러오기 실패 / 연결할 꿈이 없을 때 / 연결 실패 화면은 피그마 디자인 요청 중
   const { data: dreams = [] } = useConnectableDreams(sort);
 
   const { status, connect, cancel } = useConnectDreams((worldId) => {
-    // TODO: 2단계(연결 결과 화면)에서 라우트 추가
+    if (addState) {
+      // 꿈 추가였으면 원래 결과 화면으로 돌아감 (결과는 다시 불러옴)
+      queryClient.invalidateQueries({ queryKey: ['dreams', 'connect', 'world', worldId] });
+      navigate(-1);
+      return;
+    }
+
     navigate(`/connect/${worldId}`, { replace: true });
   });
 
@@ -37,7 +49,10 @@ function DreamConnectPage() {
 
   const handleConnect = () => {
     if (!canConnect) return;
-    connect(dreams.filter((dream) => selectedIds.includes(dream.dreamId)));
+    connect(
+      dreams.filter((dream) => selectedIds.includes(dream.dreamId)),
+      addState,
+    );
   };
 
   return (
