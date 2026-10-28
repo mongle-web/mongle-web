@@ -4,6 +4,7 @@ import type {
   ConnectableDream,
   WorldComposition,
   WorldFolder,
+  WorldImage,
   WorldResult,
 } from '@/features/dream-connect/types/dreamConnect';
 
@@ -144,3 +145,35 @@ export const getWorldResultMock = (worldId: number): WorldResult | undefined => 
 export const deleteWorldMock = (worldId: number) => {
   worlds.delete(worldId);
 };
+
+// 세계관 이미지 (생성 시작 시각 보관)
+const worldImages = new Map<number, { startedAt: number; imageVersion: number }>();
+
+// 이미지 생성에 걸리는 시간 (로딩 모달 확인용)
+const IMAGE_DURATION_MS = 3000;
+
+// 보유 토큰 (Mock)
+let mockCredits = 3;
+
+export const getCreditBalanceMock = () => mockCredits;
+
+export const createWorldImageMock = (worldId: number): WorldImage | undefined => {
+  if (!worlds.has(worldId) || mockCredits < 1) return undefined;
+
+  const previous = worldImages.get(worldId);
+  const image = { startedAt: Date.now(), imageVersion: (previous?.imageVersion ?? 0) + 1 };
+  worldImages.set(worldId, image);
+  mockCredits -= 1;
+  return { worldId, status: 'PENDING', imageVersion: image.imageVersion };
+};
+
+export const getWorldImageMock = (worldId: number): WorldImage | undefined => {
+  const image = worldImages.get(worldId);
+  if (!image) return undefined;
+
+  const isDone = Date.now() - image.startedAt >= IMAGE_DURATION_MS;
+  return { worldId, status: isDone ? 'COMPLETED' : 'PROCESSING', imageVersion: image.imageVersion };
+};
+
+// 완성 이미지 주소 (꿈 기록 화면의 예시 이미지 사용)
+export const getWorldImageUrlMock = () => `${window.location.origin}/dream-record/dream-art.png`;

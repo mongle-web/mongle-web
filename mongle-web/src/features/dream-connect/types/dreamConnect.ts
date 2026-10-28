@@ -44,3 +44,14 @@ export interface ConnectAddState {
   worldId: number;
   connectedDreamIds: number[];
 }
+
+// 세계관 이미지 생성 상태 (스웨거 WorldImageResponse 중 필요한 값)
+export interface WorldImage {
+  worldId: number;
+  status: WorldCompositionStatus; // PENDING · PROCESSING · COMPLETED · FAILED
+  imageVersion: number;
+  failureCode?: string;
+}
+
+// 이미지 생성에 필요한 토큰(크레딧) 수
+export const IMAGE_TOKEN_COST = 1;
