@@ -11,7 +11,7 @@ const MENU_CONTENT = {
   link: {
     title: '꿈의 연결고리',
     image: dreamLinkImage,
-    path: '/',
+    path: '/connect',
     // 카드 오른쪽 아래 모서리에 붙임 (SVG가 카드 밖으로 나가는 부분은 이미 잘라둠)
     imageClassName: 'right-0 bottom-0',
   },

@@ -4,6 +4,9 @@ import AppLayout from '@/components/layout/AppLayout';
 import CalendarPage from '@/features/calendar/pages/CalendarPage';
 import DreamArchivePage from '@/features/dream-archive/pages/DreamArchivePage';
 import DreamAnalysisPage from '@/features/dream-analysis/pages/DreamAnalysisPage';
+import DreamConnectPage from '@/features/dream-connect/pages/DreamConnectPage';
+import DreamConnectResultPage from '@/features/dream-connect/pages/DreamConnectResultPage';
+import DreamConnectSavedPage from '@/features/dream-connect/pages/DreamConnectSavedPage';
 import DreamDetailPage from '@/features/dream-detail/pages/DreamDetailPage';
 import DreamEditPage from '@/features/dream-detail/pages/DreamEditPage';
 import DreamImageResultPage from '@/features/dream-record/pages/DreamImageResultPage';
@@ -26,6 +29,9 @@ function AppRouter() {
           <Route path="/dreams/:dreamId" element={<DreamDetailPage />} />
           <Route path="/dreams/:dreamId/edit" element={<DreamEditPage />} />
           <Route path="/archive" element={<DreamArchivePage />} />
+          <Route path="/connect" element={<DreamConnectPage />} />
+          <Route path="/connect/:worldId" element={<DreamConnectResultPage />} />
+          <Route path="/connect/:worldId/saved" element={<DreamConnectSavedPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup/nickname" element={<NicknamePage />} />
