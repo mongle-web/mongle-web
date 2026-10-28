@@ -12,7 +12,7 @@ interface ConnectSortToggleProps {
 }
 
 // 최신순 ↔ 오래된순 전환 버튼
-// 피그마: 12 Regular B-200, 아이콘 14 (90° 회전), 글자와 아이콘 사이 8
+// 피그마: 12 Regular B-200, 아이콘 14 (내보낸 SVG에 회전이 이미 들어 있음), 글자와 아이콘 사이 8
 function ConnectSortToggle({ sort, onChange }: ConnectSortToggleProps) {
   const handleClick = () => {
     onChange(sort === 'LATEST' ? 'OLDEST' : 'LATEST');
@@ -27,7 +27,7 @@ function ConnectSortToggle({ sort, onChange }: ConnectSortToggleProps) {
     >
       {/* global.css의 button { font: inherit } 보다 우선하도록 글자 스타일에 ! 사용 */}
       <span className="text-center text-[12px]! leading-[1.5]! text-b-200">{SORT_LABEL[sort]}</span>
-      <img src={sortIcon} alt="" className="size-[14px] rotate-90" />
+      <img src={sortIcon} alt="" className="size-[14px]" />
     </button>
   );
 }
