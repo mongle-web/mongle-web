@@ -5,6 +5,7 @@ import { FlowModal } from '@/components/common';
 export type ConnectFailType = 'connect' | 'image';
 
 // 피그마: 닫기 28 → 20 → 캐릭터 → 12 → 제목 18 SemiBold → 12 → 설명 14 Medium (B-600)
+//   (+ 이미지 생성 실패만 → 20 → "다시 생성하기" 버튼)
 const FAIL_CONTENT = {
   // 피그마: iPhone 16 - 133 (캐릭터 image 47: 140×109)
   connect: {
@@ -13,7 +14,7 @@ const FAIL_CONTENT = {
     image: errorImage,
     imageClassName: 'h-[109px] w-[140px]',
   },
-  // 피그마: iPhone 16 - 132 (캐릭터 image 48: 146×116)
+  // 피그마: iPhone 16 - 132 (캐릭터 image 48: 146×116, 아래 "다시 생성하기" 버튼)
   image: {
     title: '이미지 생성에 실패했어요',
     description: ['꿈을 그림으로 만들지 못했어요.', '잠시 후 다시 시도해 주세요.'],
@@ -24,12 +25,13 @@ const FAIL_CONTENT = {
 
 interface ConnectFailModalProps {
   type: ConnectFailType;
-  onClose: () => void; // X · 바깥 · ESC → 닫기만 (다시 시도 버튼 없음)
+  onClose: () => void; // X · 바깥 · ESC → 닫기만
+  onRetry?: () => void; // 있으면 "다시 생성하기" 버튼 표시 (이미지 생성 실패)
 }
 
 // 꿈 연결 실패 · 이미지 생성 실패 모달
 // 모달 틀은 "꿈을 연결하고 있어요..."와 같은 FlowModal
-function ConnectFailModal({ type, onClose }: ConnectFailModalProps) {
+function ConnectFailModal({ type, onClose, onRetry }: ConnectFailModalProps) {
   const { title, description, image, imageClassName } = FAIL_CONTENT[type];
 
   return (
@@ -58,6 +60,17 @@ function ConnectFailModal({ type, onClose }: ConnectFailModalProps) {
           {description[1]}
         </p>
       </div>
+
+      {onRetry && (
+        // 피그마: 위 20, 너비 꽉 채움, P-500 · 테두리 흰색 40% · 모서리 8, 여백 위아래 8 · 좌우 12, 14 SemiBold
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-5 w-full cursor-pointer rounded-[8px] border! border-solid! border-white/40! bg-p-500 px-3 py-2 text-[14px]! leading-[1.3]! font-semibold! text-b-200"
+        >
+          다시 생성하기
+        </button>
+      )}
     </FlowModal>
   );
 }

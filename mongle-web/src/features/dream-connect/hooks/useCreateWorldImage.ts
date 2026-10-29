@@ -8,7 +8,7 @@ import {
   getWorldImageUrl,
 } from '@/features/dream-connect/api/dreamConnectApi';
 import { IMAGE_TOKEN_COST } from '@/features/dream-connect/types/dreamConnect';
-import { isTimeoutError, pollJob } from '@/features/dream-connect/utils/polling';
+import { isJobInProgress, isTimeoutError, pollJob } from '@/features/dream-connect/utils/polling';
 
 type ImageStatus = 'idle' | 'generating' | 'noTokens' | 'error';
 
@@ -42,6 +42,8 @@ export const useCreateWorldImage = (worldId: number, onCompleted: (imageUrl: str
       setStatus('generating');
 
       const { compositionRevision } = await getComposition(worldId);
+      // 생성 요청 전 이미지 상태 (처음 만드는 경우 없을 수 있음, 요청 뒤 새 작업인지 비교용)
+      const before = await getWorldImage(worldId).catch(() => null);
 
       try {
         await createWorldImage(worldId, compositionRevision);
@@ -53,6 +55,9 @@ export const useCreateWorldImage = (worldId: number, onCompleted: (imageUrl: str
       const image = await pollJob({
         fetchStatus: () => getWorldImage(worldId),
         isCancelled: () => isUnmountedRef.current,
+        // 진행 중이면 이번 요청, 끝난 상태면 요청 전과 다른 새 이미지일 때만
+        isRequestedJob: (current) =>
+          isJobInProgress(current) || current.imageVersion !== before?.imageVersion,
       });
       if (!image) return;
 

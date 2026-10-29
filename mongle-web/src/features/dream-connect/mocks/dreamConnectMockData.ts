@@ -41,6 +41,7 @@ interface MockWorld extends WorldFolder {
   dreamIds: number[];
   compositionRevision: number;
   hasResult: boolean;
+  jobVersion: number;
   startedAt?: number;
 }
 
@@ -67,6 +68,7 @@ export const createWorldMock = (name: string): WorldFolder => {
     dreamIds: [],
     compositionRevision: 0,
     hasResult: false,
+    jobVersion: 0,
   };
   worlds.set(world.worldId, world);
   return toFolder(world);
@@ -106,7 +108,14 @@ export const startCompositionMock = (worldId: number): WorldComposition | undefi
   if (!world) return undefined;
 
   world.startedAt = Date.now();
-  return { worldId, status: 'PENDING', compositionRevision: world.compositionRevision };
+  world.jobVersion += 1;
+  return {
+    worldId,
+    status: 'PENDING',
+    compositionRevision: world.compositionRevision,
+    attemptId: `attempt-${world.jobVersion}`,
+    jobVersion: world.jobVersion,
+  };
 };
 
 export const getCompositionMock = (worldId: number): WorldComposition | undefined => {
@@ -120,7 +129,13 @@ export const getCompositionMock = (worldId: number): WorldComposition | undefine
   }
 
   const status = world.startedAt ? 'PROCESSING' : world.hasResult ? 'COMPLETED' : 'PENDING';
-  return { worldId, status, compositionRevision: world.compositionRevision };
+  return {
+    worldId,
+    status,
+    compositionRevision: world.compositionRevision,
+    attemptId: world.jobVersion > 0 ? `attempt-${world.jobVersion}` : null,
+    jobVersion: world.jobVersion,
+  };
 };
 
 export const getWorldResultMock = (worldId: number): WorldResult | undefined => {
