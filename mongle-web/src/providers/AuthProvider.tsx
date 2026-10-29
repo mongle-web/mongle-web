@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { logout, refreshSession } from '@/api/authApi';
 import type { AuthUser, Session } from '@/api/authApi';
 import { authStorage } from '@/api/authStorage';
+import { setAuthHandlers } from '@/api/client';
 import { AuthContext } from '@/hooks/useAuth';
 
 // 앱 전체 로그인 상태
@@ -27,6 +28,16 @@ function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
     }
   }, []);
+
+  // API 요청 중 401 → 재발급 결과를 로그인 상태에 반영
+  useEffect(() => {
+    setAuthHandlers({
+      onRefreshed: signIn,
+      onExpired: () => setUser(null),
+    });
+
+    return () => setAuthHandlers(null);
+  }, [signIn]);
 
   useEffect(() => {
     // refreshSession은 진행 중인 요청을 공유하므로 StrictMode에서 두 번 실행돼도 요청은 한 번
