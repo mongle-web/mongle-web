@@ -8,11 +8,7 @@ import {
   getWorldImageUrl,
 } from '@/features/dream-connect/api/dreamConnectApi';
 import { IMAGE_TOKEN_COST } from '@/features/dream-connect/types/dreamConnect';
-
-// 이미지 상태를 몇 초마다 확인할지
-const POLLING_INTERVAL_MS = 1000;
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+import { isTimeoutError, pollJob } from '@/features/dream-connect/utils/polling';
 
 type ImageStatus = 'idle' | 'generating' | 'noTokens' | 'error';
 
@@ -46,20 +42,22 @@ export const useCreateWorldImage = (worldId: number, onCompleted: (imageUrl: str
       setStatus('generating');
 
       const { compositionRevision } = await getComposition(worldId);
-      await createWorldImage(worldId, compositionRevision);
 
-      while (!isUnmountedRef.current) {
-        await sleep(POLLING_INTERVAL_MS);
-        const image = await getWorldImage(worldId);
-
-        if (image.status === 'COMPLETED') {
-          const imageUrl = await getWorldImageUrl(worldId);
-          if (!isUnmountedRef.current) onCompleted(imageUrl);
-          return;
-        }
-
-        if (image.status === 'FAILED') throw new Error(image.failureCode);
+      try {
+        await createWorldImage(worldId, compositionRevision);
+      } catch (error) {
+        // 제한시간 초과는 서버에 접수됐을 수 있어서 다시 보내지 않고(토큰 중복 사용 방지) 상태 확인으로 넘어감
+        if (!isTimeoutError(error)) throw error;
       }
+
+      const image = await pollJob({
+        fetchStatus: () => getWorldImage(worldId),
+        isCancelled: () => isUnmountedRef.current,
+      });
+      if (!image) return;
+
+      const imageUrl = await getWorldImageUrl(worldId);
+      if (!isUnmountedRef.current) onCompleted(imageUrl);
     } catch {
       if (!isUnmountedRef.current) setStatus('error');
     } finally {
@@ -67,5 +65,8 @@ export const useCreateWorldImage = (worldId: number, onCompleted: (imageUrl: str
     }
   }, [worldId, onCompleted]);
 
-  return { status, generate, isGenerating: status === 'generating' };
+  // 실패 모달 · 토큰 부족 안내를 닫을 때
+  const resetStatus = useCallback(() => setStatus('idle'), []);
+
+  return { status, generate, resetStatus, isGenerating: status === 'generating' };
 };
