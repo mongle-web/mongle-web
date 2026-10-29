@@ -1,11 +1,14 @@
-// 로그인 토큰 저장소 (localStorage 읽기 · 쓰기를 여기 한 곳에서만 처리)
-// TODO: client.ts 의 localStorage.getItem('accessToken') 도 이걸 쓰도록 교체
-const ACCESS_TOKEN_KEY = 'accessToken';
+// 로그인 Access Token 보관 (메모리에만 보관 · localStorage에 저장하지 않음)
+// 새로고침하면 비워지고, AuthProvider가 앱 시작 시 Refresh 쿠키로 다시 받아온다
+// 로그인 여부를 화면에서 쓸 때는 useAuth()를 사용 (이 값은 바뀌어도 화면이 다시 그려지지 않음)
+let accessToken: string | null = null;
 
 export const authStorage = {
-  getAccessToken: () => localStorage.getItem(ACCESS_TOKEN_KEY),
-  // TODO: 카카오 로그인 성공 시 호출
-  setAccessToken: (token: string) => localStorage.setItem(ACCESS_TOKEN_KEY, token),
-  // TODO: 로그아웃 시 호출
-  clear: () => localStorage.removeItem(ACCESS_TOKEN_KEY),
+  getAccessToken: () => accessToken,
+  setAccessToken: (token: string) => {
+    accessToken = token;
+  },
+  clear: () => {
+    accessToken = null;
+  },
 };
