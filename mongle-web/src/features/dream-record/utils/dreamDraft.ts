@@ -1,19 +1,11 @@
-export const EMOTIONS = [
-  '행복',
-  '편안함',
-  '설렘',
-  '슬픔',
-  '불안',
-  '화남',
-  '당황',
-] as const;
+export const EMOTIONS = ['행복', '편안함', '설렘', '슬픔', '불안', '화남', '당황'] as const;
 
 export type Emotion = (typeof EMOTIONS)[number];
 
 export type RecordStep = 'text' | 'emotion' | 'image' | 'complete';
 
 export const MAX_LENGTH = 500;
-export const MAX_EMOTIONS = 2;
+export const MAX_EMOTIONS = 3;
 
 const LEGACY_KEY = 'mongle:dream-record-draft';
 
@@ -33,10 +25,7 @@ export function toDateString(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-export function parseRecordDate(
-  value: unknown,
-  today = new Date(),
-): Date | null {
+export function parseRecordDate(value: unknown, today = new Date()): Date | null {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return null;
   }
@@ -56,21 +45,14 @@ function isEmotion(value: unknown): value is Emotion {
   return EMOTIONS.some((emotion) => emotion === value);
 }
 
-export function normalizeDraft(
-  value: unknown,
-  date: string,
-): DreamDraft | null {
+export function normalizeDraft(value: unknown, date: string): DreamDraft | null {
   if (!value || typeof value !== 'object') {
     return null;
   }
 
   const raw = value as Record<string, unknown>;
 
-  if (
-    raw.date !== date ||
-    !parseRecordDate(raw.date) ||
-    typeof raw.content !== 'string'
-  ) {
+  if (raw.date !== date || !parseRecordDate(raw.date) || typeof raw.content !== 'string') {
     return null;
   }
 
@@ -83,10 +65,7 @@ export function normalizeDraft(
       ? [raw.emotion]
       : [];
 
-  const emotions = [...new Set(source.filter(isEmotion))].slice(
-    0,
-    MAX_EMOTIONS,
-  );
+  const emotions = [...new Set(source.filter(isEmotion))].slice(0, MAX_EMOTIONS);
 
   const step = !content.trim()
     ? 'text'
@@ -119,8 +98,7 @@ export function readDraft(date: string): {
 
   try {
     const stored = sessionStorage.getItem(`${LEGACY_KEY}:${date}`);
-    const legacy =
-      stored === null ? sessionStorage.getItem(LEGACY_KEY) : null;
+    const legacy = stored === null ? sessionStorage.getItem(LEGACY_KEY) : null;
     const raw = stored ?? legacy;
 
     if (!raw) {
@@ -134,26 +112,19 @@ export function readDraft(date: string): {
 
     return {
       draft: draft ?? empty,
-      warning:
-        stored && !draft
-          ? '임시 기록을 복원하지 못했어요. 새로 작성해 주세요.'
-          : '',
+      warning: stored && !draft ? '임시 기록을 복원하지 못했어요. 새로 작성해 주세요.' : '',
     };
   } catch {
     return {
       draft: empty,
-      warning:
-        '임시 기록을 불러오지 못했어요. 이 화면에서 계속 작성할 수 있어요.',
+      warning: '임시 기록을 불러오지 못했어요. 이 화면에서 계속 작성할 수 있어요.',
     };
   }
 }
 
 export function writeDraft(draft: DreamDraft): boolean {
   try {
-    sessionStorage.setItem(
-      `${LEGACY_KEY}:${draft.date}`,
-      JSON.stringify(draft),
-    );
+    sessionStorage.setItem(`${LEGACY_KEY}:${draft.date}`, JSON.stringify(draft));
 
     return true;
   } catch {

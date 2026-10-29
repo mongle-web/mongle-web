@@ -6,10 +6,7 @@ import anxiousImage from '@/assets/images/dream-record/emotions/불안.png';
 import angryImage from '@/assets/images/dream-record/emotions/화남.png';
 import surprisedImage from '@/assets/images/dream-record/emotions/당황.png';
 
-import {
-  EMOTIONS,
-  type Emotion,
-} from '@/features/dream-record/utils/dreamDraft';
+import { EMOTIONS, MAX_EMOTIONS, type Emotion } from '@/features/dream-record/utils/dreamDraft';
 
 const EMOTION_IMAGES: Record<Emotion, string> = {
   행복: happyImage,
@@ -23,16 +20,14 @@ const EMOTION_IMAGES: Record<Emotion, string> = {
 
 interface EmotionSelectorProps {
   selected: Emotion[];
+  disabled?: boolean;
   onToggle: (emotion: Emotion) => void;
 }
 
-function EmotionSelector({
-  selected,
-  onToggle,
-}: EmotionSelectorProps) {
+function EmotionSelector({ selected, onToggle, disabled = false }: EmotionSelectorProps) {
   return (
     <section
-      aria-label="꿈 감정 선택, 최대 2개"
+      aria-label={`꿈 감정 선택, 최대 ${MAX_EMOTIONS}개`}
       className="mt-10 flex flex-col gap-3"
     >
       {EMOTIONS.map((emotion) => {
@@ -43,6 +38,7 @@ function EmotionSelector({
             key={emotion}
             type="button"
             aria-pressed={isSelected}
+            disabled={disabled}
             onClick={() => onToggle(emotion)}
             className={[
               'relative flex h-14 w-full shrink-0 items-center overflow-hidden rounded-[16px] pl-[22px] pr-[112px]',

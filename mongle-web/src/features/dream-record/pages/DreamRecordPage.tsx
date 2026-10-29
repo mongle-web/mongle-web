@@ -1,243 +1,47 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { FlowModal, Glow, PrimaryButton, SecondaryButton, TokenCost } from '@/components/common';
 import DreamImage from '@/components/common/DreamImage';
-import DreamDatePicker from '@/features/dream-record/components/DreamDatePicker';
-import EmotionSelector from '@/features/dream-record/components/EmotionSelector';
-import {
-  MAX_EMOTIONS,
-  MAX_LENGTH,
-  parseRecordDate,
-  readDraft,
-  toDateString,
-  writeDraft,
-  type DreamDraft,
-  type Emotion,
-} from '@/features/dream-record/utils/dreamDraft';
 
-type Screen = 'text' | 'emotion' | 'image' | 'result' | 'complete' | 'charge';
-
-type ModalType = 'loading' | 'tokens' | null;
+import DreamDatePicker from '../components/DreamDatePicker';
+import EmotionSelector from '../components/EmotionSelector';
+import { MAX_LENGTH, parseRecordDate, toDateString } from '../utils/dreamDraft';
+import { useDreamRecord } from '../hooks/useDreamRecord';
 
 const ASSET_PATH = '/dream-record/';
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
-function DreamRecordPage() {
+function DreamRecordFlow() {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const flow = useDreamRecord();
 
-  const [initial] = useState(() => {
-    const date = parseRecordDate(searchParams.get('date')) ?? new Date();
-
-    return readDraft(toDateString(date));
-  });
-
-  const [draft, setDraft] = useState<DreamDraft>(initial.draft);
-  const [screen, setScreen] = useState<Screen>(initial.draft.step);
+  const {
+    draft,
+    screen,
+    busy,
+    ready,
+    modal,
+    setModal,
+    message,
+    setMessage,
+    storageWarning,
+    tokens,
+    cost,
+    updateDraft,
+    toggleEmotion,
+    handleNext,
+    handleBack,
+    selectDate,
+    handleGenerate,
+    handleSaveWithoutImage,
+  } = flow;
 
   const [datePickerOpen, setDatePickerOpen] = useState(false);
-  const [modal, setModal] = useState<ModalType>(null);
-  const [message, setMessage] = useState('');
-  const [storageWarning, setStorageWarning] = useState(initial.warning);
-
-  // API 연결 전 피그마 화면용 값.
-  const [tokens, setTokens] = useState(2);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [imageVersion, setImageVersion] = useState(0);
-
-  const generationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const generationLock = useRef(false);
-  const chargeReturnScreen = useRef<'image' | 'result'>('image');
 
   const selectedDate = parseRecordDate(draft.date) ?? new Date();
   const isFinished = screen === 'result' || screen === 'complete';
-
-  useEffect(() => {
-    return () => {
-      if (generationTimer.current !== null) {
-        clearTimeout(generationTimer.current);
-      }
-    };
-  }, []);
-
-  function updateDraft(changes: Partial<DreamDraft>) {
-    const next = { ...draft, ...changes };
-
-    setDraft(next);
-
-    setStorageWarning(
-      writeDraft(next) ? '' : '임시 보관에 실패했어요. 화면을 나가면 작성 내용이 사라질 수 있어요.',
-    );
-  }
-
-  function changeScreen(next: 'text' | 'emotion' | 'image') {
-    updateDraft({ step: next });
-    setScreen(next);
-    setMessage('');
-  }
-
-  function selectDate(date: Date) {
-    const dateKey = toDateString(date);
-
-    if (dateKey === draft.date) return;
-
-    if (!writeDraft(draft)) {
-      setStorageWarning('현재 기록을 임시 보관하지 못했어요. 다시 시도해 주세요.');
-      return;
-    }
-
-    const restored = readDraft(dateKey);
-
-    setDraft(restored.draft);
-    setScreen(restored.draft.step);
-    setStorageWarning(restored.warning);
-    setMessage('');
-
-    setSearchParams(
-      (current) => {
-        current.set('date', dateKey);
-        return current;
-      },
-      { replace: true },
-    );
-  }
-
-  function handleBack() {
-    if (generationLock.current) return;
-
-    setMessage('');
-
-    if (screen === 'charge') {
-      setScreen(chargeReturnScreen.current);
-      return;
-    }
-
-    if (screen === 'image') {
-      changeScreen('emotion');
-      return;
-    }
-
-    if (screen === 'emotion') {
-      changeScreen('text');
-      return;
-    }
-
-    navigate('/');
-  }
-
-  function toggleEmotion(emotion: Emotion) {
-    if (draft.emotions.includes(emotion)) {
-      updateDraft({
-        emotions: draft.emotions.filter((item) => item !== emotion),
-        imageRequested: false,
-      });
-      setMessage('');
-      return;
-    }
-
-    if (draft.emotions.length >= MAX_EMOTIONS) {
-      setMessage(`감정은 최대 ${MAX_EMOTIONS}개까지 선택할 수 있어요.`);
-      return;
-    }
-
-    updateDraft({
-      emotions: [...draft.emotions, emotion],
-      imageRequested: false,
-    });
-    setMessage('');
-  }
-
-  function handleNext() {
-    if (screen === 'text') {
-      if (!draft.content.trim()) return;
-
-      changeScreen('emotion');
-      return;
-    }
-
-    if (screen === 'emotion') {
-      if (draft.emotions.length === 0) return;
-
-      changeScreen('image');
-    }
-  }
-
-  function startGeneration(availableTokens: number) {
-    if (generationLock.current) return;
-
-    setMessage('');
-
-    if (availableTokens < 1) {
-      setModal('tokens');
-      return;
-    }
-
-    generationLock.current = true;
-
-    setIsGenerating(true);
-    setModal('loading');
-
-    updateDraft({
-      imageRequested: true,
-      step: 'image',
-    });
-
-    // API 연결 시 이미지 생성 응답을 받은 뒤 결과 화면으로 이동한다.
-    // 현재는 프론트 화면 연결만 처리한다.
-    generationTimer.current = setTimeout(() => {
-      setTokens(availableTokens - 1);
-      setImageVersion((value) => value + 1);
-      setScreen('result');
-      setModal(null);
-      setIsGenerating(false);
-
-      generationLock.current = false;
-      generationTimer.current = null;
-    }, 1500);
-  }
-
-  function handleGenerate() {
-    chargeReturnScreen.current = screen === 'result' ? 'result' : 'image';
-
-    startGeneration(tokens);
-  }
-
-  function handleCharge(amount: number) {
-    if (generationLock.current) return;
-
-    // 실제 결제 연동 전 화면 전환.
-    const nextTokens = tokens + amount;
-
-    setTokens(nextTokens);
-    setScreen(chargeReturnScreen.current);
-
-    startGeneration(nextTokens);
-  }
-
-  function handleReward() {
-    if (generationLock.current) return;
-
-    // 광고 SDK 연결 시 보상 완료 콜백에서 실행할 부분.
-    const nextTokens = tokens + 1;
-
-    setTokens(nextTokens);
-    startGeneration(nextTokens);
-  }
-
-  function handleSaveWithoutImage() {
-    if (generationLock.current) return;
-
-    updateDraft({
-      imageRequested: false,
-      step: 'image',
-    });
-
-    setMessage('');
-
-    // API 연결 시 저장 성공 응답을 받은 뒤 이동한다.
-    setScreen('complete');
-  }
+  const isGenerating = busy || flow.imageBusy;
 
   return (
     <div className="flex min-h-dvh flex-col overflow-x-clip bg-b-900 pt-[env(safe-area-inset-top)] text-b-200">
@@ -253,26 +57,24 @@ function DreamRecordPage() {
             <img src={`${ASSET_PATH}back.svg`} alt="" className="rotate-180" />
           </button>
 
-          {screen === 'charge' ? (
-            <span className="justify-self-center text-[16px] leading-6 font-medium">토큰 충전</span>
-          ) : (
-            <button
-              type="button"
-              disabled={isGenerating}
-              onClick={() => setDatePickerOpen(true)}
-              aria-label="꿈 기록 날짜 선택"
-              aria-haspopup="dialog"
-              aria-expanded={datePickerOpen}
-              className="inline-flex h-11 items-center justify-center gap-1 justify-self-center bg-transparent"
-            >
-              <span className="text-[16px] leading-6 font-medium whitespace-nowrap">
-                {selectedDate.getMonth() + 1}월 {selectedDate.getDate()}일{' '}
-                {WEEKDAYS[selectedDate.getDay()]}요일
-              </span>
+          <button
+            type="button"
+            disabled={flow.dateLocked || !ready}
+            onClick={() => setDatePickerOpen(true)}
+            aria-label="꿈 기록 날짜 선택"
+            aria-haspopup="dialog"
+            aria-expanded={datePickerOpen}
+            className="inline-flex h-11 items-center justify-center gap-1 justify-self-center bg-transparent"
+          >
+            <span className="text-[16px] leading-6 font-medium whitespace-nowrap">
+              {selectedDate.getMonth() + 1}월 {selectedDate.getDate()}일{' '}
+              {WEEKDAYS[selectedDate.getDay()]}요일
+            </span>
 
+            {!flow.dateLocked && (
               <img src={`${ASSET_PATH}chevron.svg`} alt="" className="shrink-0 rotate-90" />
-            </button>
-          )}
+            )}
+          </button>
 
           <span aria-hidden="true" className="size-7" />
         </header>
@@ -297,6 +99,7 @@ function DreamRecordPage() {
               <textarea
                 id="dream-content"
                 value={draft.content}
+                disabled={!ready || busy}
                 maxLength={MAX_LENGTH}
                 placeholder="꿈의 내용을 자유롭게 작성해 주세요."
                 onChange={(event) => {
@@ -304,6 +107,7 @@ function DreamRecordPage() {
                     content: event.target.value,
                     imageRequested: false,
                   });
+
                   setMessage('');
                 }}
                 className="min-h-0 w-full flex-1 resize-none border-0 bg-transparent text-[14px]! leading-[1.5]! text-b-200 outline-none placeholder:text-b-600"
@@ -323,11 +127,15 @@ function DreamRecordPage() {
             <p className="mt-3 text-[14px] leading-[1.5] font-medium text-b-600">
               꿈에서 느꼈던 순간의 감정을 떠올려보고
               <br />
-              가장 가까운 감정을 선택해 주세요.
+              가장 가까운 감정을 1~3개 선택해 주세요.
             </p>
 
             <div className="[&_button]:text-[18px]! [&_button]:font-semibold!">
-              <EmotionSelector selected={draft.emotions} onToggle={toggleEmotion} />
+              <EmotionSelector
+                selected={draft.emotions}
+                onToggle={toggleEmotion}
+                disabled={busy || !ready}
+              />
             </div>
           </>
         )}
@@ -348,7 +156,131 @@ function DreamRecordPage() {
             >
               <img src={`${ASSET_PATH}coin.svg`} alt="" />
 
-              <span className="text-[16px] leading-[1.3] font-semibold">{tokens}</span>
+              <span className="text-[16px] leading-[1.3] font-semibold">{tokens ?? '—'}</span>
+            </div>
+
+            <section aria-live="polite" className="mt-5 rounded-2xl bg-n-900 p-4">
+              <h2 className="text-[16px] font-semibold">꿈 분석 · 이야기</h2>
+
+              {flow.generation.isPending && (
+                <p className="mt-2 text-sm">생성 상태를 확인하고 있어요.</p>
+              )}
+
+              {['QUEUED', 'PROCESSING'].includes(flow.generation.data?.status ?? '') && (
+                <p className="mt-2 text-sm">
+                  {flow.generation.data?.stage === 'STORY'
+                    ? '이야기를 만들고 있어요…'
+                    : '꿈을 분석하고 있어요…'}{' '}
+                  기록은 이미 저장되었어요.
+                </p>
+              )}
+
+              {flow.generation.data?.status === 'FAILED' && (
+                <>
+                  <p className="mt-2 text-sm">
+                    생성을 완료하지 못했어요. 기록은 저장되어 있어요. (
+                    {flow.generation.data.failureCode})
+                  </p>
+
+                  <SecondaryButton disabled={busy} onClick={flow.retryGeneration}>
+                    실패한 단계 다시 시도
+                  </SecondaryButton>
+                </>
+              )}
+
+              {flow.generation.data?.sourceChanged && (
+                <p className="mt-2 text-sm">
+                  원문이 변경되었어요. 보관함에서 최신 기록을 확인해 주세요.
+                </p>
+              )}
+
+              {flow.analysis.data && (
+                <>
+                  <h3 className="mt-3 font-semibold">
+                    {flow.dream?.title || flow.analysis.data.generatedTitle || '기록한 꿈'}
+                  </h3>
+
+                  <p className="mt-2 text-sm text-b-400">
+                    {flow.analysis.data.displayKeywords.join(' · ')}
+                  </p>
+
+                  {flow.analysis.data.scenes.map((scene) => (
+                    <p
+                      key={scene.sequence}
+                      className="mt-2 text-sm leading-relaxed whitespace-pre-wrap"
+                    >
+                      {scene.content}
+                    </p>
+                  ))}
+                </>
+              )}
+
+              {flow.story.data?.sections.map((section) => (
+                <p
+                  key={section.sequence}
+                  className="mt-3 text-sm leading-relaxed whitespace-pre-wrap"
+                >
+                  {section.kind === 'AI_BRIDGE' && (
+                    <span className="mr-1 text-b-400">[AI 연결]</span>
+                  )}
+
+                  {section.content}
+                </p>
+              ))}
+            </section>
+
+            <div className="mt-4 flex flex-col gap-3">
+              <label className="text-sm">
+                이미지 스타일
+                <select
+                  aria-label="이미지 스타일"
+                  value={flow.selectedStyle}
+                  onChange={(event) => flow.setStyle(event.target.value)}
+                  disabled={isGenerating || !flow.options.data?.styles.length}
+                  className="mt-2 w-full rounded-xl bg-n-900 p-3"
+                >
+                  {!flow.options.data?.styles.length && (
+                    <option value="">사용 가능한 스타일이 없어요</option>
+                  )}
+
+                  {flow.options.data?.styles.map((style) => (
+                    <option key={style} value={style}>
+                      {style}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {!!flow.options.data?.moods.length && (
+                <label className="text-sm">
+                  분위기
+                  <select
+                    aria-label="이미지 분위기"
+                    value={flow.selectedMood}
+                    onChange={(event) => flow.setMood(event.target.value)}
+                    disabled={isGenerating}
+                    className="mt-2 w-full rounded-xl bg-n-900 p-3"
+                  >
+                    <option value="">기본 분위기</option>
+
+                    {flow.options.data.moods.map((mood) => (
+                      <option key={mood} value={mood}>
+                        {mood}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
+              {flow.balance.data?.spendingBlocked && (
+                <p role="alert" className="text-sm">
+                  결제 확인 중으로 이미지 생성을 사용할 수 없어요.
+                </p>
+              )}
+
+              <p className="text-xs text-b-400">
+                최초 생성 기본 비용은 3크레딧이며, 실제 처리 여부는 서버 응답으로 확인해요.
+              </p>
             </div>
 
             <div className="relative mt-[50px] h-[274px] w-full">
@@ -376,12 +308,18 @@ function DreamRecordPage() {
             </p>
 
             {screen === 'result' ? (
-              <DreamImage
-                key={imageVersion}
-                src={`${ASSET_PATH}dream-art.png`}
-                alt="꿈 이미지"
-                className="mt-[54px] h-[200px] w-full rounded-2xl"
-              />
+              flow.download.data ? (
+                <DreamImage
+                  key={flow.download.data?.url}
+                  src={flow.download.data?.url ?? ''}
+                  alt="꿈 이미지"
+                  className="mt-[54px] h-[200px] w-full rounded-2xl"
+                />
+              ) : (
+                <p className="mt-8 text-sm">
+                  이미지 주소를 불러오고 있어요. 실패하면 상태 다시 조회를 눌러 주세요.
+                </p>
+              )
             ) : (
               <div className="relative mt-[67px] h-[270px]">
                 <Glow className="top-[-90px]" />
@@ -396,34 +334,6 @@ function DreamRecordPage() {
               </div>
             )}
           </>
-        )}
-
-        {screen === 'charge' && (
-          <div className="flex flex-col gap-3.5">
-            <div className="flex items-center justify-between rounded-2xl bg-n-900 px-5 py-4">
-              <span className="text-[14px] leading-[1.5] font-medium text-b-600">보유 토큰</span>
-
-              <span className="text-[14px] leading-[1.5] font-semibold">{tokens} 개</span>
-            </div>
-
-            <div className="flex flex-col gap-6 rounded-2xl bg-n-900 px-5 py-4">
-              {[1, 5, 10].map((amount) => (
-                <div key={amount} className="flex items-center justify-between">
-                  <span className="text-[14px] leading-[1.5] font-medium">{amount} 토큰</span>
-
-                  <button
-                    type="button"
-                    disabled={isGenerating}
-                    onClick={() => handleCharge(amount)}
-                    aria-label={`${amount} 토큰 충전`}
-                    className="w-[100px] rounded-full bg-p-500 px-4 py-2 text-[14px]! leading-[1.3]! font-semibold! text-b-200 disabled:opacity-40"
-                  >
-                    1,000원
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
         )}
       </div>
 
@@ -440,26 +350,62 @@ function DreamRecordPage() {
           </p>
         )}
 
-        {isGenerating && modal !== 'loading' && (
-          <SecondaryButton onClick={() => setModal('loading')}>
-            생성 중이에요 · 진행 상황 보기
+        {(!ready || flow.saveError) && (
+          <SecondaryButton disabled={busy} onClick={flow.restore}>
+            서버 기록 다시 불러오기
           </SecondaryButton>
         )}
 
+        {!ready && (
+          <SecondaryButton onClick={() => navigate('/login')}>로그인하러 가기</SecondaryButton>
+        )}
+
+        {flow.dream?.recordStatus === 'COMPLETED' && (
+          <>
+            {flow.imageBusy && (
+              <p role="status" className="mb-3 text-center text-sm">
+                이미지 생성 중이에요. 기록은 이미 저장되어 있어요.
+              </p>
+            )}
+
+            {flow.image.data?.status === 'FAILED' && (
+              <p role="alert" className="mb-3 text-center text-sm">
+                이미지 생성에 실패했어요.{' '}
+                {flow.image.data.hasPreviousResult
+                  ? '이전 이미지는 유지돼요.'
+                  : '그림 없이도 꿈 기록은 저장되어 있어요.'}{' '}
+                ({flow.image.data.failureCode})
+              </p>
+            )}
+
+            <button
+              type="button"
+              disabled={busy}
+              onClick={flow.refreshResults}
+              className="mb-3 w-full text-sm underline"
+            >
+              상태 다시 조회
+            </button>
+          </>
+        )}
+
         {screen === 'text' && (
-          <PrimaryButton disabled={!draft.content.trim()} onClick={handleNext}>
+          <PrimaryButton
+            disabled={!draft.content.trim() || busy || !ready || flow.saveError}
+            onClick={handleNext}
+          >
             다음
           </PrimaryButton>
         )}
 
         {screen === 'emotion' && (
           <div className="flex items-center justify-between gap-4">
-            <SecondaryButton onClick={handleBack} className="w-[109px]">
+            <SecondaryButton disabled={busy} onClick={handleBack} className="w-[109px]">
               이전
             </SecondaryButton>
 
             <PrimaryButton
-              disabled={draft.emotions.length === 0}
+              disabled={draft.emotions.length === 0 || busy || !ready || flow.saveError}
               onClick={handleNext}
               className="w-[109px]"
             >
@@ -470,12 +416,12 @@ function DreamRecordPage() {
 
         {screen === 'image' && (
           <div className="flex flex-col gap-3">
-            <PrimaryButton disabled={isGenerating} onClick={handleGenerate}>
+            <PrimaryButton disabled={!flow.canGenerate} onClick={handleGenerate}>
               그림으로 남기기
-              <TokenCost />
+              <TokenCost amount={cost ?? 3} />
             </PrimaryButton>
 
-            <SecondaryButton disabled={isGenerating} onClick={handleSaveWithoutImage}>
+            <SecondaryButton disabled={busy} onClick={handleSaveWithoutImage}>
               다음에 만들어볼게요
             </SecondaryButton>
           </div>
@@ -488,9 +434,12 @@ function DreamRecordPage() {
             </PrimaryButton>
 
             {screen === 'result' && (
-              <SecondaryButton disabled={isGenerating} onClick={handleGenerate}>
+              <SecondaryButton
+                disabled={!flow.canGenerate || cost === null}
+                onClick={handleGenerate}
+              >
                 이미지 다시 생성하기
-                <TokenCost muted />
+                <TokenCost muted amount={cost ?? 0} />
               </SecondaryButton>
             )}
           </div>
@@ -505,31 +454,6 @@ function DreamRecordPage() {
         />
       )}
 
-      {modal === 'loading' && (
-        <FlowModal title="이미지 생성 중" onClose={() => setModal(null)}>
-          <button
-            type="button"
-            onClick={() => setModal(null)}
-            aria-label="진행 창 닫기"
-            className="mb-5 ml-auto flex size-7 items-center justify-center bg-transparent"
-          >
-            <img src={`${ASSET_PATH}close.svg`} alt="" />
-          </button>
-
-          <div className="relative mx-auto mb-3 h-[112px] w-[146px] overflow-hidden">
-            <img
-              src={`${ASSET_PATH}painter.png`}
-              alt=""
-              className="absolute top-[-13px] left-0 h-[131px] w-[146px] max-w-none"
-            />
-          </div>
-
-          <h2 role="status" className="text-center text-[18px] leading-[1.4] font-semibold">
-            이미지를 생성하고 있어요...
-          </h2>
-        </FlowModal>
-      )}
-
       {modal === 'tokens' && (
         <FlowModal title="토큰이 부족해요" onClose={() => setModal(null)}>
           <h2 className="text-center text-[18px] leading-[1.4] font-semibold">토큰이 부족해요!</h2>
@@ -537,44 +461,36 @@ function DreamRecordPage() {
           <dl className="mt-10 mb-4 flex flex-col gap-2 text-[12px] leading-[1.5] text-b-300">
             <div className="flex items-center justify-between">
               <dt>필요한 토큰</dt>
-              <dd>1개</dd>
+              <dd>{cost ?? '확인 중'}개</dd>
             </div>
 
             <div className="flex items-center justify-between">
               <dt>보유 토큰</dt>
-              <dd>{tokens}개</dd>
+              <dd>{tokens ?? '확인 중'}개</dd>
             </div>
 
             <div className="flex items-center justify-between border-t border-t-b-600 pt-2">
               <dt>부족한 토큰</dt>
-              <dd>{Math.max(0, 1 - tokens)}개</dd>
+              <dd>{tokens == null || cost == null ? '확인 중' : Math.max(0, cost - tokens)}개</dd>
             </div>
           </dl>
 
-          <div className="flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setModal(null);
-                setScreen('charge');
-              }}
-              className="min-h-9 w-full rounded-lg border! border-solid! border-white/40! bg-p-500 px-2.5 py-2 text-[14px]! leading-[1.3]! font-semibold! text-b-200"
-            >
-              충전하고 바로 생성하기
-            </button>
+          <p className="text-center text-sm leading-relaxed">
+            충전·광고 보상 기능은 아직 연결되지 않았어요. 꿈 기록은 저장되어 있으니 이미지는 나중에
+            만들 수 있어요.
+          </p>
 
-            <button
-              type="button"
-              onClick={handleReward}
-              className="min-h-9 w-full rounded-lg border! border-solid! border-white/40! bg-n-200 px-2.5 py-2 text-[14px]! leading-[1.3]! font-semibold! text-p-900"
-            >
-              광고 시청 후 생성하기
-            </button>
-          </div>
+          <SecondaryButton onClick={() => setModal(null)}>확인</SecondaryButton>
         </FlowModal>
       )}
     </div>
   );
+}
+
+function DreamRecordPage() {
+  const [params] = useSearchParams();
+
+  return <DreamRecordFlow key={params.get('date') ?? toDateString(new Date())} />;
 }
 
 export default DreamRecordPage;
