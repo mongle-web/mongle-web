@@ -10,11 +10,7 @@ import {
   startComposition,
 } from '@/features/dream-connect/api/dreamConnectApi';
 import type { ConnectableDream } from '@/features/dream-connect/types/dreamConnect';
-
-// 연결 상태를 몇 초마다 확인할지
-const POLLING_INTERVAL_MS = 1000;
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+import { isTimeoutError, pollJob } from '@/features/dream-connect/utils/polling';
 
 type ConnectStatus = 'idle' | 'connecting' | 'error';
 
@@ -98,22 +94,23 @@ export const useConnectDreams = (onCompleted: (worldId: number) => void) => {
 
       if (run.isCancelled) return;
       const { compositionRevision } = await getComposition(world.worldId);
-      await startComposition(world.worldId, world.revision, compositionRevision);
 
-      while (!run.isCancelled) {
-        await sleep(POLLING_INTERVAL_MS);
-        const composition = await getComposition(world.worldId);
-        if (run.isCancelled) return;
-
-        if (composition.status === 'COMPLETED') {
-          runRef.current = null;
-          setStatus('idle');
-          onCompleted(world.worldId);
-          return;
-        }
-
-        if (composition.status === 'FAILED') throw new Error(composition.failureCode);
+      try {
+        await startComposition(world.worldId, world.revision, compositionRevision);
+      } catch (error) {
+        // 제한시간 초과는 서버에 접수됐을 수 있어서 다시 보내지 않고 상태 확인으로 넘어감
+        if (!isTimeoutError(error)) throw error;
       }
+
+      const composition = await pollJob({
+        fetchStatus: () => getComposition(world.worldId),
+        isCancelled: () => run.isCancelled,
+      });
+      if (!composition) return;
+
+      runRef.current = null;
+      setStatus('idle');
+      onCompleted(world.worldId);
     } catch {
       if (run.isCancelled) return;
       runRef.current = null;

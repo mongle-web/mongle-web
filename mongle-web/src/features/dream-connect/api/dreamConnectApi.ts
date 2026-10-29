@@ -78,6 +78,7 @@ export const removeDreamFromWorld = async (
 };
 
 // 연결 생성 시작 (접수만 하고 바로 응답, 완료 여부는 getComposition으로 확인)
+// 제한시간 초과 시 다시 보내지 말고 getComposition으로 상태 확인 (useConnectDreams)
 // TODO: POST /api/v1/worlds/{worldId}/composition  body { folderRevision, compositionRevision }
 export const startComposition = async (
   worldId: number,
@@ -133,7 +134,10 @@ export const getCreditBalance = async (): Promise<number> => {
 
 // 세계관 이미지 생성 시작 (접수만 하고 바로 응답, 완료 여부는 getWorldImage로 확인)
 // TODO: POST /api/v1/worlds/{worldId}/image  body { compositionRevision, style }
-//   style은 GET /api/v1/image-options 의 styles 중 첫 번째 사용 (피그마에 스타일 선택 화면 없음)
+//   style은 사용자가 화풍 4종 중 고른 key (GET /api/v1/image-options 의 styles 에 있는 값만 사용)
+//   - surrealism · geometric-cubism · expressive-brushwork · modern-pop-art
+//   - 화풍 선택 화면은 디자인 요청 중, mood는 보내지 않음
+//   응답이 15초를 넘길 수 있음 → 제한시간 초과 시 다시 보내지 말고 getWorldImage로 상태 확인 (useCreateWorldImage)
 export const createWorldImage = async (
   worldId: number,
   // 실제 API에서 사용
