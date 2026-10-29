@@ -23,6 +23,8 @@ export interface WorldComposition {
   worldId: number;
   status: WorldCompositionStatus;
   compositionRevision: number; // 완성본 버전, 다시 연결할 때 그대로 전달 (최초 0)
+  attemptId: string | null; // 생성 요청 기록 (null = 아직 생성 요청이 접수되지 않음)
+  jobVersion: number; // 생성 작업 버전 (새 작업인지 비교할 때 사용)
   failureCode?: string;
 }
 

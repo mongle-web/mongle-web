@@ -14,7 +14,7 @@ import { useWorldResult } from '@/features/dream-connect/hooks/useWorldResult';
 import type { ConnectAddState } from '@/features/dream-connect/types/dreamConnect';
 
 // 꿈 연결하기 - 연결 결과 (/connect/:worldId)
-// 피그마: iPhone 16 - 122 (위) · 121 (끝까지 스크롤) · 132 (이미지 생성 실패)
+// 피그마: iPhone 16 - 122 (위) · 121 (끝까지 스크롤) · 132 (이미지 생성 실패 · 다시 생성하기)
 //   불러오는 중 · 불러오기 실패는 꿈 선택 화면과 같은 화면 (iPhone 16 - 127 · 129)
 function DreamConnectResultPage() {
   const navigate = useNavigate();
@@ -52,6 +52,13 @@ function DreamConnectResultPage() {
   const handleCreateImage = () => {
     setIsModalClosed(false);
     generate();
+  };
+
+  // 실패 모달 "다시 생성하기" → 실패 모달을 닫고 처음부터 다시 생성 (생성 중 모달 다시 표시)
+  // TODO: 화풍 선택 화면이 생기면 고른 화풍 그대로 다시 생성
+  const handleRetryImage = () => {
+    resetStatus();
+    handleCreateImage();
   };
 
   const handleSkipImage = () => {
@@ -113,7 +120,9 @@ function DreamConnectResultPage() {
       )}
 
       {/* 생성 중 모달을 닫은 뒤에 실패해도 실패 모달은 보여줌 */}
-      {status === 'error' && <ConnectFailModal type="image" onClose={resetStatus} />}
+      {status === 'error' && (
+        <ConnectFailModal type="image" onClose={resetStatus} onRetry={handleRetryImage} />
+      )}
     </div>
   );
 }
