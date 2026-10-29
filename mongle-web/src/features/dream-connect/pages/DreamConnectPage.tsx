@@ -5,8 +5,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 import { BackHeader, PrimaryButton } from '@/components/common';
 import ConnectDreamCard from '@/features/dream-connect/components/ConnectDreamCard';
+import ConnectFailModal from '@/features/dream-connect/components/ConnectFailModal';
 import ConnectingModal from '@/features/dream-connect/components/ConnectingModal';
 import ConnectSortToggle from '@/features/dream-connect/components/ConnectSortToggle';
+import ConnectStateView from '@/features/dream-connect/components/ConnectStateView';
 import { useConnectableDreams } from '@/features/dream-connect/hooks/useConnectableDreams';
 import { useConnectDreams } from '@/features/dream-connect/hooks/useConnectDreams';
 import { MIN_CONNECT_DREAMS } from '@/features/dream-connect/types/dreamConnect';
@@ -15,6 +17,7 @@ import type { ConnectAddState, ConnectSort } from '@/features/dream-connect/type
 // 꿈 연결하기 - 꿈 선택 (/connect)
 // 결과 화면 "+"로 들어오면 연결된 꿈에 더하거나 빼서 다시 연결
 // 피그마: iPhone 16 - 44(최신순) · 75(오래된순) · 48(선택) · 117(연결 중)
+//   127(불러오는 중) · 129(불러오기 실패) · 126(연결할 꿈 없음) · 133(연결 실패)
 function DreamConnectPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -25,10 +28,9 @@ function DreamConnectPage() {
   const [sort, setSort] = useState<ConnectSort>('LATEST');
   const [selectedIds, setSelectedIds] = useState<number[]>(addState?.connectedDreamIds ?? []);
 
-  // TODO: 불러오는 중 / 불러오기 실패 / 연결할 꿈이 없을 때 / 연결 실패 화면은 피그마 디자인 요청 중
-  const { data: dreams = [] } = useConnectableDreams(sort);
+  const { data: dreams = [], isPending, isError } = useConnectableDreams(sort);
 
-  const { status, connect, cancel } = useConnectDreams((worldId) => {
+  const { status, connect, cancel, resetError } = useConnectDreams((worldId) => {
     if (addState) {
       // 꿈 추가였으면 원래 결과 화면으로 돌아감 (결과는 다시 불러옴)
       queryClient.invalidateQueries({ queryKey: ['dreams', 'connect', 'world', worldId] });
@@ -40,6 +42,14 @@ function DreamConnectPage() {
   });
 
   const canConnect = selectedIds.length >= MIN_CONNECT_DREAMS;
+
+  // 불러오는 중 · 불러오기 실패 · 연결할 꿈이 2개 미만이면 목록 · 버튼 대신 안내 화면
+  const pageState = (() => {
+    if (isPending) return 'loading';
+    if (isError) return 'error';
+    if (dreams.length < MIN_CONNECT_DREAMS) return 'empty';
+    return null;
+  })();
 
   const toggleDream = (dreamId: number) => {
     setSelectedIds((ids) =>
@@ -54,6 +64,16 @@ function DreamConnectPage() {
       addState,
     );
   };
+
+  if (pageState) {
+    return (
+      // 빛 번짐이 화면 밖으로 나가도 가로 스크롤이 생기지 않게 overflow-x-clip
+      <div className="relative min-h-dvh overflow-x-clip bg-b-900">
+        <BackHeader title="꿈 연결하기" />
+        <ConnectStateView state={pageState} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-dvh bg-b-900">
@@ -91,6 +111,7 @@ function DreamConnectPage() {
       </div>
 
       {status === 'connecting' && <ConnectingModal onClose={cancel} />}
+      {status === 'error' && <ConnectFailModal type="connect" onClose={resetError} />}
     </div>
   );
 }
