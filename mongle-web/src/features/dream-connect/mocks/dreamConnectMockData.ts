@@ -38,15 +38,45 @@ const MOCK_KEYWORDS = ['회사', '회의', '출근', '엘리베이터'];
 const MOCK_EMOTIONS = ['불안함', '당황스러움', '긴장감'];
 
 interface MockWorld extends WorldFolder {
+  createdAt: string; // 'YYYY-MM-DD'
   dreamIds: number[];
   compositionRevision: number;
   hasResult: boolean;
+  jobVersion: number;
   startedAt?: number;
 }
 
 // 만든 세계관 보관 (새로고침하면 초기화)
 const worlds = new Map<number, MockWorld>();
 let nextWorldId = 1;
+
+// 오늘에서 며칠 전 날짜 ('YYYY-MM-DD')
+const daysAgo = (days: number) => {
+  const today = new Date();
+  const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() - days);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+};
+
+// 보관함 "연결된 꿈" 탭 확인용으로 미리 만들어 둔 연결 결과 (꿈 id는 캘린더 Mock 기준)
+const seedWorld = (name: string, dreamIds: number[], createdDaysAgo: number) => {
+  const world: MockWorld = {
+    worldId: nextWorldId++,
+    name,
+    selectedDreamCount: dreamIds.length,
+    revision: dreamIds.length,
+    createdAt: daysAgo(createdDaysAgo),
+    dreamIds,
+    compositionRevision: 1,
+    hasResult: true,
+    jobVersion: 1,
+  };
+  worlds.set(world.worldId, world);
+};
+
+seedWorld('별이 쏟아지는 학교', [5, 1, 3, 6, 2], 1);
+seedWorld('계단 끝의 회의실', [2, 4], 5);
 
 // 연결 생성에 걸리는 시간 (로딩 모달 확인용)
 const COMPOSITION_DURATION_MS = 3000;
@@ -64,9 +94,11 @@ export const createWorldMock = (name: string): WorldFolder => {
     name,
     selectedDreamCount: 0,
     revision: 0,
+    createdAt: daysAgo(0),
     dreamIds: [],
     compositionRevision: 0,
     hasResult: false,
+    jobVersion: 0,
   };
   worlds.set(world.worldId, world);
   return toFolder(world);
@@ -106,7 +138,14 @@ export const startCompositionMock = (worldId: number): WorldComposition | undefi
   if (!world) return undefined;
 
   world.startedAt = Date.now();
-  return { worldId, status: 'PENDING', compositionRevision: world.compositionRevision };
+  world.jobVersion += 1;
+  return {
+    worldId,
+    status: 'PENDING',
+    compositionRevision: world.compositionRevision,
+    attemptId: `attempt-${world.jobVersion}`,
+    jobVersion: world.jobVersion,
+  };
 };
 
 export const getCompositionMock = (worldId: number): WorldComposition | undefined => {
@@ -120,7 +159,13 @@ export const getCompositionMock = (worldId: number): WorldComposition | undefine
   }
 
   const status = world.startedAt ? 'PROCESSING' : world.hasResult ? 'COMPLETED' : 'PENDING';
-  return { worldId, status, compositionRevision: world.compositionRevision };
+  return {
+    worldId,
+    status,
+    compositionRevision: world.compositionRevision,
+    attemptId: world.jobVersion > 0 ? `attempt-${world.jobVersion}` : null,
+    jobVersion: world.jobVersion,
+  };
 };
 
 export const getWorldResultMock = (worldId: number): WorldResult | undefined => {
@@ -145,6 +190,23 @@ export const getWorldResultMock = (worldId: number): WorldResult | undefined => 
 export const deleteWorldMock = (worldId: number) => {
   worlds.delete(worldId);
 };
+
+// 내 세계관 목록 (보관함 "연결된 꿈" 탭, 연결이 완성된 것만)
+export const getWorldListMock = () =>
+  [...worlds.values()]
+    .filter((world) => world.hasResult)
+    .map((world) => ({
+      worldId: world.worldId,
+      name: world.name,
+      createdAt: world.createdAt,
+      revision: world.revision,
+      keywords: MOCK_KEYWORDS,
+      // 연결한 꿈 제목 (날짜순)
+      dreamTitles: calendarMockDreams
+        .filter((dream) => world.dreamIds.includes(dream.id))
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map((dream) => dream.title),
+    }));
 
 // 세계관 이미지 (생성 시작 시각 보관)
 const worldImages = new Map<number, { startedAt: number; imageVersion: number }>();

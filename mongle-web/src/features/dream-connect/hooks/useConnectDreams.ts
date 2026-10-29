@@ -10,7 +10,7 @@ import {
   startComposition,
 } from '@/features/dream-connect/api/dreamConnectApi';
 import type { ConnectableDream } from '@/features/dream-connect/types/dreamConnect';
-import { isTimeoutError, pollJob } from '@/features/dream-connect/utils/polling';
+import { isJobInProgress, isTimeoutError, pollJob } from '@/features/dream-connect/utils/polling';
 
 type ConnectStatus = 'idle' | 'connecting' | 'error';
 
@@ -93,10 +93,11 @@ export const useConnectDreams = (onCompleted: (worldId: number) => void) => {
       }
 
       if (run.isCancelled) return;
-      const { compositionRevision } = await getComposition(world.worldId);
+      // 생성 요청 전 상태 (요청 뒤 새 작업인지 비교용)
+      const before = await getComposition(world.worldId);
 
       try {
-        await startComposition(world.worldId, world.revision, compositionRevision);
+        await startComposition(world.worldId, world.revision, before.compositionRevision);
       } catch (error) {
         // 제한시간 초과는 서버에 접수됐을 수 있어서 다시 보내지 않고 상태 확인으로 넘어감
         if (!isTimeoutError(error)) throw error;
@@ -105,6 +106,13 @@ export const useConnectDreams = (onCompleted: (worldId: number) => void) => {
       const composition = await pollJob({
         fetchStatus: () => getComposition(world.worldId),
         isCancelled: () => run.isCancelled,
+        // attemptId가 없으면 아직 접수 전
+        // 진행 중이면 이번 요청(같은 요청이면 서버가 이어서 처리), 끝난 상태면 요청 전과 다른 새 작업일 때만
+        isRequestedJob: (current) =>
+          current.attemptId !== null &&
+          (isJobInProgress(current) ||
+            current.attemptId !== before.attemptId ||
+            current.jobVersion !== before.jobVersion),
       });
       if (!composition) return;
 
