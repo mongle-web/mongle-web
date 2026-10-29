@@ -10,12 +10,14 @@ import ArchiveDreamCard from '@/features/dream-archive/components/ArchiveDreamCa
 import ArchiveEmptyState from '@/features/dream-archive/components/ArchiveEmptyState';
 import ArchiveSearchBar from '@/features/dream-archive/components/ArchiveSearchBar';
 import ArchiveTabs from '@/features/dream-archive/components/ArchiveTabs';
+import type { ArchiveEmptyType } from '@/features/dream-archive/components/ArchiveEmptyState';
 import {
   useArchiveDreams,
   useConnectedDreams,
 } from '@/features/dream-archive/hooks/useArchiveDreams';
 import { useDeleteConnectedDream } from '@/features/dream-archive/hooks/useDeleteConnectedDream';
 import type { ArchiveDream, ArchiveTab } from '@/features/dream-archive/types/dreamArchive';
+import ConnectStateView from '@/features/dream-connect/components/ConnectStateView';
 
 // 제목 · 키워드에 검색어가 들어 있는 꿈만 남긴다 (대소문자 · 앞뒤 공백 무시)
 const filterBySearch = <T extends ArchiveDream>(dreams: T[], search: string) => {
@@ -29,7 +31,9 @@ const filterBySearch = <T extends ArchiveDream>(dreams: T[], search: string) => 
   );
 };
 
-// 지난 꿈 보관함 "지난 꿈 돌아보기" (/archive)
+// 지난 꿈 보관함 (/archive)
+// 피그마: 헤더 제목은 최신 디자인(iPhone 16 - 119 · 124 · 125 · 130 · 131)대로 "지난 꿈 보관함"
+// 피그마: 불러오는 중 · 불러오기 실패는 꿈 연결하기와 같은 화면에 제목만 "지난 꿈 보관함" (iPhone 16 - 130 · 131)
 function DreamArchivePage() {
   const navigate = useNavigate();
 
@@ -37,13 +41,23 @@ function DreamArchivePage() {
   const [search, setSearch] = useState('');
   const [dreamToDelete, setDreamToDelete] = useState<ArchiveDream | null>(null);
 
-  // TODO: 불러오는 중 / 불러오기 실패 / 검색 결과가 없을 때 / 연결된 꿈이 없을 때 화면은 피그마 디자인 요청 중
-  const { data: recordedDreams = [], isSuccess: isRecordedLoaded } = useArchiveDreams();
-  const { data: connectedDreams = [] } = useConnectedDreams();
+  const recordedQuery = useArchiveDreams();
+  const connectedQuery = useConnectedDreams();
+  const { data: recordedDreams = [] } = recordedQuery;
+  const { data: connectedDreams = [] } = connectedQuery;
 
-  // 기록한 꿈이 하나도 없으면 검색창 · 목록 대신 안내 화면 (피그마: iPhone 16 - 119)
-  const isRecordedEmpty =
-    selectedTab === 'recorded' && isRecordedLoaded && recordedDreams.length === 0;
+  // 지금 보고 있는 탭의 목록 상태
+  const currentQuery = selectedTab === 'recorded' ? recordedQuery : connectedQuery;
+  const currentDreams = selectedTab === 'recorded' ? recordedDreams : connectedDreams;
+
+  // 탭에 꿈이 하나도 없으면 검색창 · 목록 대신 안내 화면 (피그마: 기록한 꿈 iPhone 16 - 119 · 연결된 꿈 124)
+  // 검색 결과만 없으면 검색창은 두고 안내 화면 (피그마: iPhone 16 - 125, 두 탭 공통)
+  const emptyType = ((): ArchiveEmptyType | null => {
+    if (currentDreams.length === 0) return selectedTab;
+    if (filterBySearch(currentDreams, search).length === 0) return 'search';
+    return null;
+  })();
+  const isTabEmpty = emptyType === 'recorded' || emptyType === 'connected';
 
   const deleteDreamMutation = useDeleteDream();
   const deleteConnectedMutation = useDeleteConnectedDream();
@@ -62,18 +76,28 @@ function DreamArchivePage() {
     });
   };
 
+  // 불러오는 중 · 불러오기 실패면 탭 없이 안내 화면 (실패는 화면을 나갔다 들어오면 다시 불러옴)
+  if (currentQuery.isPending || currentQuery.isError) {
+    return (
+      <div className="relative min-h-dvh overflow-x-clip bg-b-900">
+        <BackHeader title="지난 꿈 보관함" />
+        <ConnectStateView state={currentQuery.isError ? 'error' : 'loading'} />
+      </div>
+    );
+  }
+
   return (
     <>
       {/* 빈 화면의 빛 번짐이 화면 밖으로 나가도 가로 스크롤이 생기지 않게 overflow-x-clip */}
       <div className="relative min-h-dvh overflow-x-clip bg-b-900">
-        <BackHeader title="지난 꿈 돌아보기" />
+        <BackHeader title="지난 꿈 보관함" />
 
         {/* 피그마: 위 20 · 좌우 20 · 아래 64, 탭과 목록 사이 28 */}
         <main className="flex flex-col gap-7 px-5 pt-5 pb-16">
           <ArchiveTabs selectedTab={selectedTab} onChange={setSelectedTab} />
 
           {/* 피그마: 검색창과 카드 목록 사이 12, 카드 사이 8 */}
-          {!isRecordedEmpty && (
+          {!isTabEmpty && (
             <div className="flex flex-col gap-3">
               <ArchiveSearchBar value={search} onChange={setSearch} />
 
@@ -90,10 +114,10 @@ function DreamArchivePage() {
                     ))
                   : filterBySearch(connectedDreams, search).map((dream) => (
                       <li key={dream.id}>
-                        {/* TODO: 꿈 연결 결과 화면이 생기면 카드 클릭 시 이동 */}
                         <ArchiveDreamCard
                           dream={dream}
                           connectedDreamTitles={dream.connectedDreamTitles}
+                          onClick={() => navigate(`/connect/${dream.id}`)}
                           onDelete={() => setDreamToDelete(dream)}
                         />
                       </li>
@@ -103,7 +127,7 @@ function DreamArchivePage() {
           )}
         </main>
 
-        {isRecordedEmpty && <ArchiveEmptyState />}
+        {emptyType && <ArchiveEmptyState type={emptyType} />}
       </div>
 
       <AnimatePresence>
