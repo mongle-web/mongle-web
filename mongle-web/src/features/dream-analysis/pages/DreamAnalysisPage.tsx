@@ -90,7 +90,10 @@ function DreamAnalysisPage() {
         )}
 
         {interpretationText !== null && (
-          <InterpretationSection interpretation={interpretationText} />
+          <InterpretationSection
+            interpretation={interpretationText}
+            isMessage={interpretation?.status !== 'COMPLETED'}
+          />
         )}
       </div>
     </div>

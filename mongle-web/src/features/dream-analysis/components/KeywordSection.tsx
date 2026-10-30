@@ -72,7 +72,7 @@ function KeywordSection({ keywords }: KeywordSectionProps) {
           ))}
         </div>
       ) : (
-        <p className="px-4 text-center text-[14px] leading-[1.5] font-semibold text-b-400">
+        <p className="px-4 py-10 text-center text-[14px] leading-[1.5] font-semibold text-b-400">
           아직 기록된 키워드가 없어요
         </p>
       )}
