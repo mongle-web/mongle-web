@@ -19,6 +19,7 @@ export const KAKAO_LOGIN_URL = `${import.meta.env.VITE_API_BASE_URL}/oauth2/auth
 // .env.local 에 VITE_AUTH_MOCK=true 를 넣고 개발 서버(pnpm run dev)에서만 동작 (배포 빌드에서는 항상 꺼짐)
 // 상태: 없음(로그아웃) → 카카오 버튼 시 'new'(신규 회원) → 닉네임 온보딩 후 'member'(기존 회원)
 // 기존 회원으로 바로 보려면 콘솔: localStorage.setItem('mongle:mock-auth', 'member')
+// 실제 API까지 로컬에서 테스트하려면 VITE_DEV_ACCESS_TOKEN 에 진짜 Access Token을 함께 넣기 (만료되면 다시 넣기)
 // ─────────────────────────────────────────────
 export const IS_AUTH_MOCK = import.meta.env.DEV && import.meta.env.VITE_AUTH_MOCK === 'true';
 const MOCK_AUTH_KEY = 'mongle:mock-auth';
@@ -31,7 +32,8 @@ export const setMockAuthState = (state: MockAuthState | null) => {
 };
 
 const createMockSession = (state: MockAuthState): Session => ({
-  accessToken: 'mock-access-token',
+  // .env.local 에 VITE_DEV_ACCESS_TOKEN(배포 사이트에서 로그인 후 받은 진짜 토큰)이 있으면 실제 API도 로컬에서 호출 가능
+  accessToken: import.meta.env.VITE_DEV_ACCESS_TOKEN || 'mock-access-token',
   tokenType: 'Bearer',
   expiresIn: 3600,
   user: {
