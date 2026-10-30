@@ -1,5 +1,6 @@
 import { apiClient } from '@/api/client';
 import { RecordApiError } from './dreamRecordApi';
+import { isPaymentComplete, paymentLink } from '../utils/paymentState';
 
 export interface CreditProduct {
   productId: string;
@@ -63,23 +64,7 @@ async function request<T>(
   return response.data.data;
 }
 
-export function isPaymentComplete(order: PaymentOrder | undefined) {
-  return order?.state === 'PAID' && order.creditGranted;
-}
-
-export function paymentLink(order: PaymentOrder | undefined) {
-  if (!order?.paymentUrl || !['READY', 'PENDING'].includes(order.state)) {
-    return null;
-  }
-
-  try {
-    const url = new URL(order.paymentUrl);
-
-    return url.protocol === 'https:' && !url.username && !url.password ? url.href : null;
-  } catch {
-    return null;
-  }
-}
+export { isPaymentComplete, paymentLink };
 
 export const dreamPaymentApi = {
   products: (signal?: AbortSignal) =>

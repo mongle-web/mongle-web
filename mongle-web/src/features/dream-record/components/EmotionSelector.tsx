@@ -30,6 +30,9 @@ function EmotionSelector({ selected, onToggle, disabled = false }: EmotionSelect
       aria-label={`꿈 감정 선택, 최대 ${MAX_EMOTIONS}개`}
       className="mt-10 flex flex-col gap-3"
     >
+      <p className="text-right text-xs text-b-600" aria-live="polite">
+        {selected.length} / {MAX_EMOTIONS}
+      </p>
       {EMOTIONS.map((emotion) => {
         const isSelected = selected.includes(emotion);
 

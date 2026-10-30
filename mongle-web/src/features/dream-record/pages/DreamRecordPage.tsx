@@ -8,6 +8,7 @@ import DreamDatePicker from '../components/DreamDatePicker';
 import EmotionSelector from '../components/EmotionSelector';
 import DreamCharge from '../components/DreamCharge';
 import ImageStyleSelector from '../components/ImageStyleSelector';
+import DreamTokenShortageModal from '../components/DreamTokenShortageModal';
 
 import { MAX_LENGTH, parseRecordDate, toDateString } from '../utils/dreamDraft';
 import {
@@ -46,8 +47,7 @@ function DreamRecordFlow() {
   const intent = dreamId ? readImageIntent(dreamId) : null;
   const restoredStyle = intent?.style && styles.includes(intent.style) ? intent.style : '';
   const chosenStyle = chosenStyleOverride || restoredStyle;
-  const view =
-    viewOverride ?? (params.get('orderId') ? 'charge' : (intent?.view ?? 'style'));
+  const view = viewOverride ?? (params.get('orderId') ? 'charge' : (intent?.view ?? 'style'));
 
   const screen =
     flow.dream?.recordStatus === 'COMPLETED' && view === 'charge'
@@ -83,7 +83,14 @@ function DreamRecordFlow() {
     setViewOverride(nextView);
 
     if (dreamId) {
-      writeImageIntent({ dreamId, style: nextStyle, view: nextView });
+      const existing = readImageIntent(dreamId);
+      writeImageIntent({
+        dreamId,
+        style: nextStyle,
+        view: nextView,
+        ...(existing?.action ? { action: existing.action } : {}),
+        ...(existing?.imageVersion !== undefined ? { imageVersion: existing.imageVersion } : {}),
+      });
     }
   }
 
@@ -214,7 +221,7 @@ function DreamRecordFlow() {
             <p className="mt-3 text-[14px] leading-[1.5] text-b-600">
               꿈에서 느꼈던 순간의 감정을 떠올려보고
               <br />
-              가장 가까운 감정을 1~3개 선택해 주세요.
+              가장 가까운 감정을 1~2개 선택해 주세요.
             </p>
 
             <EmotionSelector
@@ -310,10 +317,9 @@ function DreamRecordFlow() {
         {screen === 'charge' && flow.dream && (
           <DreamCharge
             dreamId={flow.dream.dreamId}
-            cost={cost ?? INITIAL_DREAM_IMAGE_COST}
+            cost={cost ?? 0}
             canGenerate={flow.canGenerate && (flow.screen === 'result' || validChoice)}
             onContinue={continueAfterPayment}
-            onBack={() => rememberImageStep(validChoice ? 'offer' : 'style')}
           />
         )}
 
@@ -369,7 +375,7 @@ function DreamRecordFlow() {
           </p>
         )}
 
-        {(!ready || flow.saveError) && (
+        {!ready && (
           <SecondaryButton disabled={busy} onClick={flow.restore}>
             서버 기록 다시 불러오기
           </SecondaryButton>
@@ -395,7 +401,13 @@ function DreamRecordFlow() {
             </SecondaryButton>
 
             <PrimaryButton
-              disabled={!draft.emotions.length || busy || !ready || flow.saveError}
+              disabled={
+                !draft.emotions.length ||
+                draft.emotions.length > 2 ||
+                busy ||
+                !ready ||
+                flow.saveError
+              }
               onClick={flow.handleNext}
             >
               다음
@@ -416,10 +428,13 @@ function DreamRecordFlow() {
           <div className="flex flex-col gap-3">
             <PrimaryButton disabled={!canGenerate} onClick={generate}>
               그림으로 남기기
-              <TokenCost amount={cost ?? INITIAL_DREAM_IMAGE_COST} />
+              {cost !== null && <TokenCost amount={cost} />}
             </PrimaryButton>
 
-            <SecondaryButton disabled={busy || flow.imageBusy} onClick={flow.handleSaveWithoutImage}>
+            <SecondaryButton
+              disabled={busy || flow.imageBusy}
+              onClick={flow.handleSaveWithoutImage}
+            >
               다음에 만들어볼게요
             </SecondaryButton>
           </div>
@@ -432,14 +447,16 @@ function DreamRecordFlow() {
             </PrimaryButton>
 
             {screen === 'result' && (
-              <SecondaryButton disabled={!canGenerate || cost === null} onClick={generate}>
+              <SecondaryButton
+                disabled={!canGenerate || cost === null || flow.imageBusy || busy}
+                onClick={generate}
+              >
                 이미지 다시 생성하기
-                <TokenCost amount={cost ?? 0} muted />
+                {cost !== null && <TokenCost amount={cost} muted />}
               </SecondaryButton>
             )}
           </div>
         )}
-
       </footer>
 
       {datePickerOpen && (
@@ -474,10 +491,7 @@ function DreamRecordFlow() {
       )}
 
       {flow.image.data?.status === 'FAILED' && showImageFailure && (
-        <FlowModal
-          title="이미지 생성 실패"
-          onClose={() => setDismissedFailureKey(failureKey)}
-        >
+        <FlowModal title="이미지 생성 실패" onClose={() => setDismissedFailureKey(failureKey)}>
           <button
             type="button"
             aria-label="안내 창 닫기"
@@ -521,52 +535,14 @@ function DreamRecordFlow() {
       )}
 
       {flow.modal === 'tokens' && (
-        <FlowModal title="토큰이 부족해요" onClose={() => flow.setModal(null)}>
-          <h2 className="text-center text-[18px] font-semibold">토큰이 부족해요!</h2>
-
-          <dl className="mt-10 mb-4 flex flex-col gap-2 text-[12px] leading-[1.5] text-b-300">
-            <div className="flex justify-between">
-              <dt>필요한 토큰</dt>
-              <dd>{cost ?? INITIAL_DREAM_IMAGE_COST}개</dd>
-            </div>
-
-            <div className="flex justify-between">
-              <dt>보유 토큰</dt>
-              <dd>{tokens ?? '—'}개</dd>
-            </div>
-
-            <div className="flex justify-between border-t border-b-600 pt-2">
-              <dt>부족한 토큰</dt>
-              <dd>
-                {tokens == null
-                  ? '—'
-                  : Math.max(0, (cost ?? INITIAL_DREAM_IMAGE_COST) - tokens)}
-                개
-              </dd>
-            </div>
-          </dl>
-
-          <div className="flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={openCharge}
-              className="h-9 w-full rounded-lg border border-white/40 bg-p-500 px-3 text-[14px] leading-[1.3] font-semibold"
-            >
-              충전하고 바로 생성하기
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                flow.setModal(null);
-                flow.handleSaveWithoutImage();
-              }}
-              className="h-9 w-full rounded-lg border border-white/40 bg-p-100 px-3 text-[14px] leading-[1.3] font-semibold text-[#a09dbe]"
-            >
-              다음에 만들어볼게요
-            </button>
-          </div>
-        </FlowModal>
+        <DreamTokenShortageModal
+          required={flow.tokenRequirement ?? cost ?? INITIAL_DREAM_IMAGE_COST}
+          available={tokens}
+          onClose={() => {
+            flow.setModal(null);
+          }}
+          onCharge={openCharge}
+        />
       )}
     </div>
   );
