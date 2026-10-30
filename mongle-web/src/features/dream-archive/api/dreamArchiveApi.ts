@@ -1,16 +1,12 @@
 import type { ApiResponse } from '@/api/authApi';
 import { apiClient } from '@/api/client';
-import { deleteWorld, USE_WORLD_API } from '@/features/dream-connect/api/dreamConnectApi';
-import { getWorldListMock } from '@/features/dream-connect/mocks/dreamConnectMockData';
+import { deleteWorld } from '@/features/dream-connect/api/dreamConnectApi';
 import { UNTITLED_DREAM_TITLE } from '@/features/dream-detail/types/dreamDetail';
 import type {
   ArchiveDream,
   ConnectedDream,
   RecordedDream,
 } from '@/features/dream-archive/types/dreamArchive';
-
-// 실제 네트워크 요청처럼 보이도록 약간 지연 (로딩 UI 확인용)
-const wait = (ms = 300) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // 날짜 · 시간 → 내 기기 기준 날짜 ('YYYY-MM-DD')
 const toLocalDate = (dateTime: string) => {
@@ -93,17 +89,12 @@ interface WorldFolderPageResponse {
   nextBeforeId?: number;
 }
 
-// 연결된 꿈 목록 (= 꿈 연결하기로 만든 세계관 목록, Mock은 꿈 연결하기와 같은 데이터 사용)
+// 연결된 꿈 목록 (= 꿈 연결하기로 만든 세계관 목록)
 // - 제목: summary.generatedTitle (AI 제목, 아직 없으면 폴더 name)
 // - "첫 꿈 외 N개": representativeDream.title · composedDreamCount
 // - 키워드: summary.commonKeywords[].keyword
 // - 완성본에 꿈이 없는 폴더(composedDreamCount 0)는 목록에서 뺌 (백엔드 확인)
 const getWorldFolders = async (): Promise<WorldFolderPageResponse['items']> => {
-  if (!USE_WORLD_API) {
-    await wait();
-    return getWorldListMock();
-  }
-
   const folders: WorldFolderPageResponse['items'] = [];
   let beforeId: number | undefined;
 
@@ -151,6 +142,6 @@ export const getConnectedDreams = async (): Promise<ConnectedDream[]> => {
 };
 
 // 연결된 꿈 삭제 (세계관 폴더 삭제, 원본 꿈은 지워지지 않음)
-// DELETE /api/v1/worlds/{worldId}?revision={revision} (Mock 여부는 꿈 연결하기 API와 같은 기준)
+// DELETE /api/v1/worlds/{worldId}?revision={revision}
 export const deleteConnectedDream = ({ id, revision }: ConnectedDream): Promise<void> =>
   deleteWorld(id, revision);
