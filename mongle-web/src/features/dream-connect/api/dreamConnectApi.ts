@@ -57,6 +57,7 @@ interface WorldCompositionResponse {
   failureCode?: string | null;
   attemptId: string | null;
   jobVersion: number;
+  hasConnectionGaps: boolean;
 }
 
 interface WorldEntryPageResponse {
@@ -91,6 +92,8 @@ interface WorldImageResponse {
   failureCode?: string | null;
   hasPreviousResult: boolean;
   nextRegenerationCost: number | null;
+  compositionChanged: boolean;
+  sourceDeleted: boolean;
 }
 
 const toComposition = (data: WorldCompositionResponse): WorldComposition => ({
@@ -100,6 +103,7 @@ const toComposition = (data: WorldCompositionResponse): WorldComposition => ({
   attemptId: data.attemptId,
   jobVersion: data.jobVersion,
   failureCode: data.failureCode ?? undefined,
+  hasConnectionGaps: data.hasConnectionGaps,
 });
 
 const toWorldImage = (data: WorldImageResponse): WorldImage => ({
@@ -109,6 +113,8 @@ const toWorldImage = (data: WorldImageResponse): WorldImage => ({
   failureCode: data.failureCode ?? undefined,
   hasPreviousResult: data.hasPreviousResult,
   nextRegenerationCost: data.nextRegenerationCost,
+  compositionChanged: data.compositionChanged,
+  sourceDeleted: data.sourceDeleted,
 });
 
 // ---------------- API ----------------
@@ -427,4 +433,22 @@ export const getWorldImageUrl = async (worldId: number): Promise<string> => {
   }
 
   return (await getData<{ url: string }>(`/api/v1/worlds/${worldId}/image/download-url`)).url;
+};
+
+// 화풍 4종의 서버 key (Mock에서 사용, 실제 API는 GET /api/v1/image-options 의 styles)
+const MOCK_IMAGE_STYLES = [
+  'surrealism',
+  'geometric-cubism',
+  'expressive-brushwork',
+  'modern-pop-art',
+];
+
+// 화풍 선택 화면에 보여줄 화풍 목록 (꿈 기록과 같은 API)
+export const getImageStyles = async (): Promise<string[]> => {
+  if (!USE_WORLD_API) {
+    await wait(100);
+    return MOCK_IMAGE_STYLES;
+  }
+
+  return (await getData<{ styles: string[] }>('/api/v1/image-options')).styles;
 };

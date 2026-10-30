@@ -7,6 +7,7 @@ import DreamAnalysisPage from '@/features/dream-analysis/pages/DreamAnalysisPage
 import DreamConnectPage from '@/features/dream-connect/pages/DreamConnectPage';
 import DreamConnectResultPage from '@/features/dream-connect/pages/DreamConnectResultPage';
 import DreamConnectSavedPage from '@/features/dream-connect/pages/DreamConnectSavedPage';
+import DreamConnectStylePage from '@/features/dream-connect/pages/DreamConnectStylePage';
 import DreamDetailPage from '@/features/dream-detail/pages/DreamDetailPage';
 import DreamEditPage from '@/features/dream-detail/pages/DreamEditPage';
 import DreamImageResultPage from '@/features/dream-record/pages/DreamImageResultPage';
@@ -34,6 +35,7 @@ function AppRouter() {
           <Route path="/connect" element={<DreamConnectPage />} />
           <Route path="/connect/:worldId" element={<DreamConnectResultPage />} />
           <Route path="/connect/:worldId/saved" element={<DreamConnectSavedPage />} />
+          <Route path="/connect/:worldId/style" element={<DreamConnectStylePage />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/login" element={<LoginPage />} />

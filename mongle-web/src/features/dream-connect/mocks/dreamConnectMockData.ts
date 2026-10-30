@@ -184,7 +184,8 @@ export const getCompositionMock = (worldId: number): WorldComposition | undefine
     world.startedAt = undefined;
     world.hasResult = true;
     world.compositionRevision += 1;
-    world.composedDreamIds = [...world.dreamIds];
+    // 다시 연결하면 삭제된 꿈은 빠지고 남은 꿈끼리 이어짐
+    world.composedDreamIds = existingDreams(world.dreamIds).map(({ id }) => id);
     world.summaryStartedAt = Date.now(); // 연결이 완성되면 요약 생성 자동 시작
   }
 
@@ -195,6 +196,9 @@ export const getCompositionMock = (worldId: number): WorldComposition | undefine
     compositionRevision: world.compositionRevision,
     attemptId: world.jobVersion > 0 ? `attempt-${world.jobVersion}` : null,
     jobVersion: world.jobVersion,
+    // 완성본에 들어간 꿈 중 원본이 삭제된 꿈이 있으면 이야기가 끊긴 상태
+    hasConnectionGaps:
+      existingDreams(world.composedDreamIds).length < world.composedDreamIds.length,
   };
 };
 
@@ -292,7 +296,10 @@ export const getWorldListMock = () =>
   });
 
 // 세계관 이미지 (생성 시작 시각 보관)
-const worldImages = new Map<number, { startedAt: number; imageVersion: number }>();
+const worldImages = new Map<
+  number,
+  { startedAt: number; imageVersion: number; compositionRevision: number; dreamIds: number[] }
+>();
 
 // 이미지 생성에 걸리는 시간 (로딩 모달 확인용)
 const IMAGE_DURATION_MS = 3000;
@@ -309,7 +316,12 @@ export const createWorldImageMock = (worldId: number): WorldImage | undefined =>
   if (existingDreams(world.composedDreamIds).length < MIN_CONNECT_DREAMS) return undefined;
 
   const previous = worldImages.get(worldId);
-  const image = { startedAt: Date.now(), imageVersion: (previous?.imageVersion ?? 0) + 1 };
+  const image = {
+    startedAt: Date.now(),
+    imageVersion: (previous?.imageVersion ?? 0) + 1,
+    compositionRevision: world.compositionRevision,
+    dreamIds: [...world.composedDreamIds],
+  };
   worldImages.set(worldId, image);
   mockCredits -= IMAGE_TOKEN_COST;
   return { worldId, status: 'PENDING', imageVersion: image.imageVersion };
@@ -319,8 +331,17 @@ export const getWorldImageMock = (worldId: number): WorldImage | undefined => {
   const image = worldImages.get(worldId);
   if (!image) return undefined;
 
+  const world = worlds.get(worldId);
   const isDone = Date.now() - image.startedAt >= IMAGE_DURATION_MS;
-  return { worldId, status: isDone ? 'COMPLETED' : 'PROCESSING', imageVersion: image.imageVersion };
+  return {
+    worldId,
+    status: isDone ? 'COMPLETED' : 'PROCESSING',
+    imageVersion: image.imageVersion,
+    hasPreviousResult: image.imageVersion > 1,
+    nextRegenerationCost: image.imageVersion > 1 ? 1 : 0,
+    compositionChanged: world?.compositionRevision !== image.compositionRevision,
+    sourceDeleted: existingDreams(image.dreamIds).length < image.dreamIds.length,
+  };
 };
 
 // 완성 이미지 주소 (꿈 기록 화면의 예시 이미지 사용)

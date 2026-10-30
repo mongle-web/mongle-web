@@ -26,6 +26,7 @@ export interface WorldComposition {
   attemptId: string | null; // 생성 요청 기록 (null = 아직 생성 요청이 접수되지 않음)
   jobVersion: number; // 생성 작업 버전 (새 작업인지 비교할 때 사용)
   failureCode?: string;
+  hasConnectionGaps?: boolean; // 원본 꿈이 삭제돼서 이야기 중간이 끊긴 상태 (다시 연결하면 이어짐)
 }
 
 // 연결하려면 꿈을 최소 2개 골라야 함 (스웨거: "선택한 꿈이 2개 이상")
@@ -72,7 +73,17 @@ export interface WorldImage {
   failureCode?: string;
   hasPreviousResult?: boolean; // 이전에 성공한 이미지가 있으면 true (다시 만들 때 재생성으로 요청)
   nextRegenerationCost?: number | null; // 다음 재생성 비용 (첫 재생성 무료 0, 이후 1)
+  compositionChanged?: boolean; // 이미지를 만든 뒤 이야기가 다시 연결됨 (지금 이야기와 다른 그림)
+  sourceDeleted?: boolean; // 이미지를 만들 때 쓴 원본 꿈이 삭제됨
 }
+
+// 이미 만든 이미지가 있는지 (생성 중 · 실패여도 이전 성공 이미지가 있으면 true)
+export const hasWorldImage = (image?: WorldImage | null) =>
+  Boolean(image && (image.status === 'COMPLETED' || image.hasPreviousResult));
+
+// 이미지가 지금 이야기와 달라졌는지 (꿈 삭제 · 다시 연결 후) → "이미지 다시 생성하기"
+export const isWorldImageOutdated = (image?: WorldImage | null) =>
+  Boolean(image && (image.compositionChanged || image.sourceDeleted));
 
 // 세계관 이미지 최초 생성에 필요한 토큰(크레딧) 수 (백엔드 정책: 최초 생성 3, 첫 재생성 무료, 이후 재생성 1)
 // 생성에 실패하면 토큰을 쓰지 않으므로 "다시 생성하기"도 같은 값
