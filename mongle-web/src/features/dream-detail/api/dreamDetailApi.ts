@@ -121,3 +121,40 @@ export const updateDreamDetail = async (
     ...(content !== dream.content && { originalText: content }),
   });
 };
+
+// 꿈 수정 · 삭제 가능 여부 (GET /api/v1/dreams/{dreamId}/mutation-status)
+// 이야기 · 이미지 · 세계관 작업이 진행 중이면 mutable=false (조회는 잠금이 아니며 실제 수정 · 삭제 때 서버가 다시 검사)
+export interface DreamMutationStatus {
+  mutable: boolean;
+  blockingTasks: ('ANALYSIS_STORY' | 'IMAGE' | 'WORLD_BRIDGE' | 'WORLD_COMPOSITION')[];
+}
+
+export const getDreamMutationStatus = async (dreamId: number): Promise<DreamMutationStatus> => {
+  const { data } = await apiClient.get<ApiResponse<DreamMutationStatus>>(
+    `/api/v1/dreams/${dreamId}/mutation-status`,
+  );
+  return data.data;
+};
+
+// 꿈을 삭제하면 영향을 받는 세계관(연결된 꿈) 목록 (GET /api/v1/dreams/{dreamId}/world-impacts)
+// 안내용 조회이며 실제 삭제 때 서버가 관련 구성을 함께 변경
+export interface DreamWorldImpact {
+  worldId: number;
+  name: string;
+  selected: boolean;
+  usedInComposition: boolean;
+}
+
+interface DreamWorldImpactPage {
+  items: DreamWorldImpact[];
+  hasNext: boolean;
+}
+
+// 안내 문구에 개수만 쓰므로 한 번에 최대치(50개)만 받는다
+export const getDreamWorldImpacts = async (dreamId: number): Promise<DreamWorldImpactPage> => {
+  const { data } = await apiClient.get<ApiResponse<DreamWorldImpactPage>>(
+    `/api/v1/dreams/${dreamId}/world-impacts`,
+    { params: { size: 50 } },
+  );
+  return data.data;
+};
