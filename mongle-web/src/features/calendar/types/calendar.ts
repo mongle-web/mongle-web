@@ -1,10 +1,10 @@
 // 캘린더 화면에서 사용하는 꿈 요약 정보
-// TODO: 백엔드 API 응답 구조가 확정되면 필드 이름을 맞춰서 수정
 export interface CalendarDream {
   id: number;
   date: string; // 'YYYY-MM-DD'
   title: string;
   keywords: string[];
+  revision: number; // 삭제할 때 백엔드에 넘기는 최신 버전
   thumbnailUrl?: string; // 이미지를 생성하지 않은 꿈은 없음
 }
 
