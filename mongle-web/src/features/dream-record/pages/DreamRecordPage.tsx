@@ -46,8 +46,7 @@ function DreamRecordFlow() {
   const intent = dreamId ? readImageIntent(dreamId) : null;
   const restoredStyle = intent?.style && styles.includes(intent.style) ? intent.style : '';
   const chosenStyle = chosenStyleOverride || restoredStyle;
-  const view =
-    viewOverride ?? (params.get('orderId') ? 'charge' : (intent?.view ?? 'style'));
+  const view = viewOverride ?? (params.get('orderId') ? 'charge' : (intent?.view ?? 'style'));
 
   const screen =
     flow.dream?.recordStatus === 'COMPLETED' && view === 'charge'
@@ -89,9 +88,7 @@ function DreamRecordFlow() {
         style: nextStyle,
         view: nextView,
         ...(existing?.action ? { action: existing.action } : {}),
-        ...(existing?.imageVersion !== undefined
-          ? { imageVersion: existing.imageVersion }
-          : {}),
+        ...(existing?.imageVersion !== undefined ? { imageVersion: existing.imageVersion } : {}),
       });
     }
   }
@@ -319,7 +316,7 @@ function DreamRecordFlow() {
         {screen === 'charge' && flow.dream && (
           <DreamCharge
             dreamId={flow.dream.dreamId}
-            cost={cost ?? INITIAL_DREAM_IMAGE_COST}
+            cost={cost ?? 0}
             canGenerate={flow.canGenerate && (flow.screen === 'result' || validChoice)}
             onContinue={continueAfterPayment}
             onBack={() => rememberImageStep(validChoice ? 'offer' : 'style')}
@@ -431,10 +428,13 @@ function DreamRecordFlow() {
           <div className="flex flex-col gap-3">
             <PrimaryButton disabled={!canGenerate} onClick={generate}>
               그림으로 남기기
-              <TokenCost amount={cost ?? INITIAL_DREAM_IMAGE_COST} />
+              {cost !== null && <TokenCost amount={cost} />}
             </PrimaryButton>
 
-            <SecondaryButton disabled={busy || flow.imageBusy} onClick={flow.handleSaveWithoutImage}>
+            <SecondaryButton
+              disabled={busy || flow.imageBusy}
+              onClick={flow.handleSaveWithoutImage}
+            >
               다음에 만들어볼게요
             </SecondaryButton>
           </div>
@@ -447,14 +447,16 @@ function DreamRecordFlow() {
             </PrimaryButton>
 
             {screen === 'result' && (
-              <SecondaryButton disabled={!canGenerate || cost === null} onClick={generate}>
+              <SecondaryButton
+                disabled={!canGenerate || cost === null || flow.imageBusy || busy}
+                onClick={generate}
+              >
                 이미지 다시 생성하기
-                <TokenCost amount={cost ?? 0} muted />
+                {cost !== null && <TokenCost amount={cost} muted />}
               </SecondaryButton>
             )}
           </div>
         )}
-
       </footer>
 
       {datePickerOpen && (
@@ -489,10 +491,7 @@ function DreamRecordFlow() {
       )}
 
       {flow.image.data?.status === 'FAILED' && showImageFailure && (
-        <FlowModal
-          title="이미지 생성 실패"
-          onClose={() => setDismissedFailureKey(failureKey)}
-        >
+        <FlowModal title="이미지 생성 실패" onClose={() => setDismissedFailureKey(failureKey)}>
           <button
             type="button"
             aria-label="안내 창 닫기"
@@ -553,10 +552,7 @@ function DreamRecordFlow() {
             <div className="flex justify-between border-t border-b-600 pt-2">
               <dt>부족한 토큰</dt>
               <dd>
-                {tokens == null
-                  ? '—'
-                  : Math.max(0, (cost ?? INITIAL_DREAM_IMAGE_COST) - tokens)}
-                개
+                {tokens == null ? '—' : Math.max(0, (cost ?? INITIAL_DREAM_IMAGE_COST) - tokens)}개
               </dd>
             </div>
           </dl>
