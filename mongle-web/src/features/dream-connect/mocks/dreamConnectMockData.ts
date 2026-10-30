@@ -232,6 +232,15 @@ export const getWorldSummaryMock = (worldId: number) => {
   } as const;
 };
 
+// 세계관 요약 생성 요청 (생성 중이면 그대로 두고, 아니면 새로 시작)
+export const requestWorldSummaryMock = (worldId: number) => {
+  const world = worlds.get(worldId);
+  if (!world || !world.hasResult) return undefined;
+
+  world.summaryStartedAt = world.summaryStartedAt ?? Date.now();
+  return getWorldSummaryMock(worldId);
+};
+
 // 내 세계관 목록 (스웨거 GET /api/v1/worlds 의 items 모양, 빈 폴더도 포함)
 export const getWorldListMock = () =>
   [...worlds.values()].map((world) => {
