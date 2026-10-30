@@ -10,6 +10,12 @@ import type { EmotionCode } from '@/features/dream-record/api/dreamRecordApi';
 // ─────────────────────────────────────────────
 // 서버 응답 형태
 // ─────────────────────────────────────────────
+// 월별 반복 장소 · 인물 (서로 다른 꿈 2개 이상에 나온 것, 각각 최대 5개)
+interface RecurringElementsResponse {
+  places: { name: string; dreamCount: number }[];
+  characters: { name: string; dreamCount: number }[];
+}
+
 interface MonthlyResponse {
   month: string;
   analyzedDreamCount: number;
@@ -56,14 +62,46 @@ const toMonthlyAnalysis = (data: MonthlyResponse): MonthlyAnalysis => ({
   })),
 });
 
-// 월별 꿈 요소(키워드) · 선택 감정 통계
-// month: 'YYYY-MM' (생략하면 서버 기본 월)
+// 월별 반복 장소 · 인물 (GET /api/v1/analysis-records/recurring-elements, AI 호출 · 크레딧 없음)
+// 못 받아도 키워드 통계는 보여줘야 해서 실패하면 빈 목록
+const getRecurringElements = async (month?: string) => {
+  try {
+    const response = await apiClient.get<ApiResponse<RecurringElementsResponse>>(
+      '/api/v1/analysis-records/recurring-elements',
+      { params: month ? { month } : undefined },
+    );
+    const { places, characters } = response.data.data;
+    return [...places, ...characters];
+  } catch {
+    return [];
+  }
+};
+
+// 키워드에 반복 장소 · 인물을 합침 (디자이너: 키워드 통계에 한번에 표시)
+// 같은 이름이 키워드에도 있으면 하나로 합치고 더 큰 건수를 사용
+const mergeKeywords = (
+  keywords: MonthlyResponse['keywords'],
+  elements: RecurringElementsResponse['places'],
+) => {
+  const counts = new Map<string, number>();
+  [...keywords, ...elements].forEach(({ name, dreamCount }) => {
+    counts.set(name, Math.max(counts.get(name) ?? 0, dreamCount));
+  });
+  return [...counts].map(([name, dreamCount]) => ({ name, dreamCount }));
+};
+
+// 월별 꿈 요소(키워드) · 선택 감정 통계 + 반복 장소 · 인물
+// month: 'YYYY-MM' (생략하면 서버 기본 월, 두 API 모두 한국 시간 이번 달)
 export const getMonthlyAnalysis = async (month?: string): Promise<MonthlyAnalysis> => {
-  const response = await apiClient.get<ApiResponse<MonthlyResponse>>(
-    '/api/v1/analysis-records/monthly',
-    { params: month ? { month } : undefined },
-  );
-  return toMonthlyAnalysis(response.data.data);
+  const [response, elements] = await Promise.all([
+    apiClient.get<ApiResponse<MonthlyResponse>>('/api/v1/analysis-records/monthly', {
+      params: month ? { month } : undefined,
+    }),
+    getRecurringElements(month),
+  ]);
+  const data = response.data.data;
+
+  return toMonthlyAnalysis({ ...data, keywords: mergeKeywords(data.keywords, elements) });
 };
 
 // 종합 해석 조회 (AI 호출 없음, 생성 진행 상태 확인용)
