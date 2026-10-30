@@ -11,6 +11,7 @@ import {
   getWorldImageUrlMock,
   getWorldMock,
   getWorldResultMock,
+  getWorldSummaryMock,
   removeDreamFromWorldMock,
   startCompositionMock,
 } from '@/features/dream-connect/mocks/dreamConnectMockData';
@@ -21,6 +22,7 @@ import type {
   WorldFolder,
   WorldImage,
   WorldResult,
+  WorldSummary,
 } from '@/features/dream-connect/types/dreamConnect';
 
 // 실제 네트워크 요청처럼 보이도록 약간 지연 (로딩 UI 확인용)
@@ -101,17 +103,36 @@ export const getComposition = async (worldId: number): Promise<WorldComposition>
   return composition;
 };
 
-// 연결 결과 (제목 · 스토리 · 공통 키워드 · 반복되는 감정 · 연결된 꿈)
+// 연결 결과 (폴더 이름 · 스토리 · 연결된 꿈)
 // TODO: 백엔드 API 연동 시 아래 API 응답을 합쳐서 반환
-//   - 제목: GET /api/v1/worlds/{worldId} 의 name
+//   - 폴더 이름: GET /api/v1/worlds/{worldId} 의 name
 //   - 스토리: GET /api/v1/worlds/{worldId}/composition/entries 의 각 꿈 bridgeBefore + sections[].content
 //   - 연결된 꿈: GET /api/v1/worlds/{worldId}/dreams 의 items (dreamId · dreamedAt · title)
-//   - 공통 키워드 · 반복되는 감정: 백엔드 API 추가 예정
 export const getWorldResult = async (worldId: number): Promise<WorldResult> => {
   await wait();
   const result = getWorldResultMock(worldId);
   if (!result) throw new Error('연결 결과를 찾지 못했어요.');
   return result;
+};
+
+// 세계관 요약 (AI 제목 · 공통 키워드 · 반복되는 감정)
+// 연결이 완성되면 서버가 자동으로 만들기 시작함 (조회는 AI 호출 · 토큰 사용 없음)
+// TODO: 백엔드 API 연동 시 Mock 부분을 지우고 아래 코드로 교체
+//   const { data } = (await apiClient.get(`/api/v1/worlds/${worldId}/summary`)).data;
+//   그 뒤 아래 return과 같은 방식으로 필요한 값만 꺼내서 반환
+//   (keyword · label 이름 주의: 월별 통계의 name · emotion과 다름, 백엔드 #107)
+export const getWorldSummary = async (worldId: number): Promise<WorldSummary> => {
+  await wait(100);
+  const data = getWorldSummaryMock(worldId);
+  if (!data) throw new Error('세계관 요약을 찾지 못했어요.');
+
+  return {
+    status: data.status,
+    generatedTitle: data.generatedTitle,
+    commonKeywords: data.commonKeywords.map(({ keyword }) => keyword),
+    recurringEmotions: data.recurringEmotions.map(({ label }) => label),
+    hasPreviousResult: data.hasPreviousResult,
+  };
 };
 
 // 세계관 폴더 삭제 (연결 중단 시 사용, 원본 꿈은 지워지지 않음)
