@@ -17,10 +17,19 @@ type ImageStatus = 'idle' | 'generating' | 'noTokens' | 'error';
 export const getRequiredTokens = (previous?: WorldImage | null) =>
   hasWorldImage(previous) ? (previous?.nextRegenerationCost ?? IMAGE_TOKEN_COST) : IMAGE_TOKEN_COST;
 
+// 필요한 토큰 · 보유 토큰 ("토큰이 부족해요!" 모달에 표시)
+export interface TokenCheck {
+  required: number;
+  owned: number;
+  isEnough: boolean;
+}
+
 // 토큰이 충분한지 (결과 화면에서 화풍 선택으로 넘어가기 전에 확인, 디자이너: 비용은 이전 화면에서 확인)
-export const hasEnoughTokens = async (worldId: number) => {
+export const checkTokens = async (worldId: number): Promise<TokenCheck> => {
   const before = await getWorldImage(worldId).catch(() => null);
-  return (await getCreditBalance()) >= getRequiredTokens(before);
+  const required = getRequiredTokens(before);
+  const owned = await getCreditBalance();
+  return { required, owned, isEnough: owned >= required };
 };
 
 // 연결한 꿈 이미지 만들기 (화풍 선택 화면 "그림 완성하기")
@@ -28,6 +37,8 @@ export const hasEnoughTokens = async (worldId: number) => {
 // 생성 중 모달을 닫아도 서버에서는 계속 만들어지므로(토큰도 사용됨) 화면에서도 계속 기다렸다가 완료되면 이동
 export const useCreateWorldImage = (worldId: number, onCompleted: (imageUrl: string) => void) => {
   const [status, setStatus] = useState<ImageStatus>('idle');
+  // 토큰이 부족할 때 모달에 보여줄 값
+  const [tokenCheck, setTokenCheck] = useState<TokenCheck | null>(null);
   const isRunningRef = useRef(false);
   const isUnmountedRef = useRef(false);
 
@@ -48,8 +59,10 @@ export const useCreateWorldImage = (worldId: number, onCompleted: (imageUrl: str
         // 생성 요청 전 이미지 상태 (처음 만드는 경우 없을 수 있음, 재생성 여부 · 새 작업인지 비교용)
         const before = await getWorldImage(worldId).catch(() => null);
 
-        const credits = await getCreditBalance();
-        if (credits < getRequiredTokens(before)) {
+        const required = getRequiredTokens(before);
+        const owned = await getCreditBalance();
+        if (owned < required) {
+          setTokenCheck({ required, owned, isEnough: false });
           setStatus('noTokens');
           return;
         }
@@ -88,5 +101,5 @@ export const useCreateWorldImage = (worldId: number, onCompleted: (imageUrl: str
   // 실패 모달 · 토큰 부족 안내를 닫을 때
   const resetStatus = useCallback(() => setStatus('idle'), []);
 
-  return { status, generate, resetStatus, isGenerating: status === 'generating' };
+  return { status, generate, resetStatus, tokenCheck, isGenerating: status === 'generating' };
 };
