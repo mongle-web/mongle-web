@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 
 import trashIcon from '@/assets/icons/calendar/trash.svg';
 import DreamImage from '@/components/common/DreamImage';
+import { useRefreshThumbnail } from '@/features/calendar/hooks/useRefreshThumbnail';
 import type { CalendarDream } from '@/features/calendar/types/calendar';
 import { formatDreamDate } from '@/features/calendar/utils/calendar';
 
@@ -15,6 +16,7 @@ interface DreamSummaryCardProps {
 // 카드를 누르면 꿈 상세(/dreams/:id)로 이동
 function DreamSummaryCard({ dream, onDelete }: DreamSummaryCardProps) {
   const navigate = useNavigate();
+  const refreshThumbnail = useRefreshThumbnail();
 
   const goToDetail = () => navigate(`/dreams/${dream.id}`);
 
@@ -30,7 +32,13 @@ function DreamSummaryCard({ dream, onDelete }: DreamSummaryCardProps) {
       className="flex cursor-pointer flex-col gap-4 rounded-3xl bg-n-900 p-5"
     >
       {dream.thumbnailUrl && (
-        <DreamImage src={dream.thumbnailUrl} alt={dream.title} className="h-[158px] rounded-2xl" />
+        <DreamImage
+          src={dream.thumbnailUrl}
+          alt={dream.title}
+          className="h-[158px] rounded-2xl"
+          // "다시 시도"를 누르면 새 임시 주소를 받아서 다시 불러옴
+          onRetry={() => refreshThumbnail(dream, true)}
+        />
       )}
 
       <div className="flex flex-col gap-3">

@@ -10,7 +10,7 @@ const today = new Date();
 const dateOf = (monthOffset: number, day: number) =>
   toDateKey(new Date(today.getFullYear(), today.getMonth() + monthOffset, day));
 
-export const calendarMockDreams: Omit<CalendarDream, 'revision'>[] = [
+export const calendarMockDreams: Omit<CalendarDream, 'revision' | 'thumbnail'>[] = [
   {
     id: 1,
     date: dateOf(0, 3),
