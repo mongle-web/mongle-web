@@ -11,6 +11,7 @@ import ConnectTagCard from '@/features/dream-connect/components/ConnectTagCard';
 import ImageGeneratingModal from '@/features/dream-connect/components/ImageGeneratingModal';
 import { useCreateWorldImage } from '@/features/dream-connect/hooks/useCreateWorldImage';
 import { useWorldResult } from '@/features/dream-connect/hooks/useWorldResult';
+import { useWorldSummary } from '@/features/dream-connect/hooks/useWorldSummary';
 import type { ConnectAddState } from '@/features/dream-connect/types/dreamConnect';
 
 // 꿈 연결하기 - 연결 결과 (/connect/:worldId)
@@ -22,6 +23,15 @@ function DreamConnectResultPage() {
   const worldId = Number(worldIdParam);
 
   const { data: result, isError } = useWorldResult(worldId);
+  const { data: summary } = useWorldSummary(worldId);
+
+  // 세계관 요약(AI 제목 · 공통 키워드 · 반복되는 감정)은 결과보다 늦게 완성될 수 있음
+  // 완성 전 · 실패 · 불러오기 실패면 제목은 폴더 이름, 키워드 · 감정 카드는 숨김 (이전에 완성된 요약이 있으면 그 값 표시)
+  // TODO: 요약을 만드는 중일 때 보여줄 모습은 디자이너 확인 중
+  const hasSummary = summary?.status === 'COMPLETED' || summary?.hasPreviousResult === true;
+  const title = (hasSummary && summary.generatedTitle) || result?.name;
+  const commonKeywords = hasSummary ? summary.commonKeywords : [];
+  const recurringEmotions = hasSummary ? summary.recurringEmotions : [];
 
   const handleAdd = () => {
     if (!result) return;
@@ -92,13 +102,13 @@ function DreamConnectResultPage() {
           아래 168 = 끝까지 스크롤했을 때 + 버튼과 "그림으로 남기기" 사이 18 (피그마 iPhone 16 - 121: + 아래 끝이 화면 아래에서 168) */}
       <main className="flex flex-col gap-2 px-5 pt-5 pb-[168px]">
         <section className="rounded-3xl bg-n-900 p-5">
-          <h2 className="text-[18px] leading-[1.4] font-semibold text-b-200">{result.name}</h2>
+          <h2 className="text-[18px] leading-[1.4] font-semibold text-b-200">{title}</h2>
         </section>
 
         <div className="flex flex-col gap-4">
           <ConnectStoryCard paragraphs={result.story} />
-          <ConnectTagCard title="공통 키워드" tags={result.commonKeywords} />
-          <ConnectTagCard title="반복되는 감정" tags={result.repeatedEmotions} />
+          <ConnectTagCard title="공통 키워드" tags={commonKeywords} />
+          <ConnectTagCard title="반복되는 감정" tags={recurringEmotions} />
           <ConnectedDreamList dreams={result.dreams} onAdd={handleAdd} />
         </div>
       </main>

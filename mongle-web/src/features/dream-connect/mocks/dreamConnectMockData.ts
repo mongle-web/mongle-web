@@ -35,7 +35,12 @@ const MOCK_STORY = [
   '조심스럽게 발을 내딛는 순간 몸이 가볍게 떠올랐다. 더 이상 어디로 가야 할지 고민하지 않아도 됐다. 나는 구름 사이를 천천히 날아가며 처음으로 시간에 쫓기지 않는 기분을 느꼈다.',
 ];
 const MOCK_KEYWORDS = ['회사', '회의', '출근', '엘리베이터'];
-const MOCK_EMOTIONS = ['불안함', '당황스러움', '긴장감'];
+const MOCK_EMOTIONS = [
+  { code: 'ANXIOUS', label: '불안함' },
+  { code: 'CONFUSED', label: '당황스러움' },
+  { code: 'EXCITED', label: '긴장감' },
+];
+const MOCK_GENERATED_TITLE = '길을 잃은 끝에 만난 하늘';
 
 interface MockWorld extends WorldFolder {
   createdAt: string; // 'YYYY-MM-DD'
@@ -44,6 +49,8 @@ interface MockWorld extends WorldFolder {
   hasResult: boolean;
   jobVersion: number;
   startedAt?: number;
+  generatedTitle?: string; // AI 제목 (요약이 완성되면 생김)
+  summaryStartedAt?: number; // 요약 생성 시작 시각 (연결이 완성되면 자동 시작)
 }
 
 // 만든 세계관 보관 (새로고침하면 초기화)
@@ -60,7 +67,12 @@ const daysAgo = (days: number) => {
 };
 
 // 보관함 "연결된 꿈" 탭 확인용으로 미리 만들어 둔 연결 결과 (꿈 id는 캘린더 Mock 기준)
-const seedWorld = (name: string, dreamIds: number[], createdDaysAgo: number) => {
+const seedWorld = (
+  name: string,
+  generatedTitle: string,
+  dreamIds: number[],
+  createdDaysAgo: number,
+) => {
   const world: MockWorld = {
     worldId: nextWorldId++,
     name,
@@ -71,15 +83,19 @@ const seedWorld = (name: string, dreamIds: number[], createdDaysAgo: number) => 
     compositionRevision: 1,
     hasResult: true,
     jobVersion: 1,
+    generatedTitle,
   };
   worlds.set(world.worldId, world);
 };
 
-seedWorld('별이 쏟아지는 학교', [5, 1, 3, 6, 2], 1);
-seedWorld('계단 끝의 회의실', [2, 4], 5);
+seedWorld('파도 너머의 밤 외 4개', '별이 쏟아지는 학교', [5, 1, 3, 6, 2], 1);
+seedWorld('끝없이 이어지는 계단 외 1개', '계단 끝의 회의실', [2, 4], 5);
 
 // 연결 생성에 걸리는 시간 (로딩 모달 확인용)
 const COMPOSITION_DURATION_MS = 3000;
+
+// 요약(AI 제목 · 키워드 · 감정) 생성에 걸리는 시간 (결과 화면에서 늦게 바뀌는 것 확인용)
+const SUMMARY_DURATION_MS = 3000;
 
 const toFolder = ({ worldId, name, selectedDreamCount, revision }: MockWorld): WorldFolder => ({
   worldId,
@@ -156,6 +172,7 @@ export const getCompositionMock = (worldId: number): WorldComposition | undefine
     world.startedAt = undefined;
     world.hasResult = true;
     world.compositionRevision += 1;
+    world.summaryStartedAt = Date.now(); // 연결이 완성되면 요약 생성 자동 시작
   }
 
   const status = world.startedAt ? 'PROCESSING' : world.hasResult ? 'COMPLETED' : 'PENDING';
@@ -181,8 +198,6 @@ export const getWorldResultMock = (worldId: number): WorldResult | undefined => 
     worldId,
     name: world.name,
     story: MOCK_STORY,
-    commonKeywords: MOCK_KEYWORDS,
-    repeatedEmotions: MOCK_EMOTIONS,
     dreams,
   };
 };
@@ -191,22 +206,50 @@ export const deleteWorldMock = (worldId: number) => {
   worlds.delete(worldId);
 };
 
-// 내 세계관 목록 (보관함 "연결된 꿈" 탭, 연결이 완성된 것만)
+// 세계관 요약 (스웨거 WorldSummaryResponse 모양)
+// 요약을 만드는 중에도 이전에 완성된 요약이 있으면 그 값을 같이 내려줌 (hasPreviousResult)
+export const getWorldSummaryMock = (worldId: number) => {
+  const world = worlds.get(worldId);
+  if (!world) return undefined;
+
+  if (world.summaryStartedAt && Date.now() - world.summaryStartedAt >= SUMMARY_DURATION_MS) {
+    world.summaryStartedAt = undefined;
+    world.generatedTitle = world.generatedTitle ?? MOCK_GENERATED_TITLE;
+  }
+
+  const hasTitle = world.generatedTitle !== undefined;
+  const status = world.summaryStartedAt ? 'PROCESSING' : hasTitle ? 'COMPLETED' : 'NOT_GENERATED';
+
+  return {
+    worldId,
+    status,
+    generatedTitle: world.generatedTitle ?? null,
+    commonKeywords: hasTitle ? MOCK_KEYWORDS.map((keyword) => ({ keyword, dreamCount: 2 })) : [],
+    recurringEmotions: hasTitle
+      ? MOCK_EMOTIONS.map((emotion) => ({ ...emotion, dreamCount: 2 }))
+      : [],
+    hasPreviousResult: Boolean(world.summaryStartedAt) && hasTitle,
+  } as const;
+};
+
+// 내 세계관 목록 (스웨거 GET /api/v1/worlds 의 items 모양, 빈 폴더도 포함)
 export const getWorldListMock = () =>
-  [...worlds.values()]
-    .filter((world) => world.hasResult)
-    .map((world) => ({
+  [...worlds.values()].map((world) => {
+    const dreams = calendarMockDreams
+      .filter((dream) => world.hasResult && world.dreamIds.includes(dream.id))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    return {
       worldId: world.worldId,
       name: world.name,
-      createdAt: world.createdAt,
       revision: world.revision,
-      keywords: MOCK_KEYWORDS,
-      // 연결한 꿈 제목 (날짜순)
-      dreamTitles: calendarMockDreams
-        .filter((dream) => world.dreamIds.includes(dream.id))
-        .sort((a, b) => a.date.localeCompare(b.date))
-        .map((dream) => dream.title),
-    }));
+      createdAt: `${world.createdAt}T09:00:00`,
+      composedDreamCount: dreams.length, // 완성본에 들어간 꿈 수
+      // 완성본에서 가장 오래된 꿈 (완성본이 없으면 null)
+      representativeDream: dreams[0] ? { title: dreams[0].title, dreamedAt: dreams[0].date } : null,
+      summary: getWorldSummaryMock(world.worldId) ?? null,
+    };
+  });
 
 // 세계관 이미지 (생성 시작 시각 보관)
 const worldImages = new Map<number, { startedAt: number; imageVersion: number }>();

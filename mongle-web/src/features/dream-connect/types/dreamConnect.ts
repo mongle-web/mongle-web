@@ -32,13 +32,27 @@ export interface WorldComposition {
 export const MIN_CONNECT_DREAMS = 2;
 
 // 연결 결과 화면에 필요한 정보 (여러 API 응답을 합친 값)
+// 제목(AI) · 공통 키워드 · 반복되는 감정은 세계관 요약(WorldSummary)에서 따로 받음
 export interface WorldResult {
   worldId: number;
-  name: string; // 세계관 이름 → 화면 맨 위 제목
+  name: string; // 세계관 폴더 이름 (AI 제목이 아직 없을 때 제목으로 사용)
   story: string[]; // 몽글의 꿈 연결 스토리 (문단 단위)
-  commonKeywords: string[]; // TODO: 백엔드 API 추가 예정 (없으면 빈 배열)
-  repeatedEmotions: string[]; // TODO: 백엔드 API 추가 예정 (없으면 빈 배열)
   dreams: ConnectableDream[]; // 연결된 꿈 (날짜순)
+}
+
+// 세계관 요약 생성 상태 (스웨거 WorldSummaryResponse.status)
+// EMPTY: 출처 없음 · NOT_GENERATED: 미요청 · PENDING: 대기 · PROCESSING: 생성 중 · COMPLETED: 완료 · FAILED: 실패
+export type WorldSummaryStatus =
+  'EMPTY' | 'NOT_GENERATED' | 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+
+// 세계관 요약 (AI 제목 · 공통 키워드 · 반복되는 감정, 스웨거 WorldSummaryResponse 중 화면에 필요한 값)
+// 연결이 완성되면 서버가 자동으로 만들기 시작해서 결과 화면보다 늦게 완성될 수 있음
+export interface WorldSummary {
+  status: WorldSummaryStatus;
+  generatedTitle: string | null;
+  commonKeywords: string[]; // commonKeywords[].keyword
+  recurringEmotions: string[]; // recurringEmotions[].label
+  hasPreviousResult: boolean; // 생성 중 · 실패여도 이전에 완성된 결과가 있으면 true (그 값을 보여줄 수 있음)
 }
 
 // 결과 화면 "+" → 선택 화면으로 넘길 값 (이미 연결된 꿈은 체크된 채로 시작)
