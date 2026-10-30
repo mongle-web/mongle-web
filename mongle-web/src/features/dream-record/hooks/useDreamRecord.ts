@@ -302,9 +302,14 @@ export function useDreamRecord() {
     let current = recordRef.current;
 
     if (current?.recordStatus === 'COMPLETED') {
-      throw new Error(
-        '이미 저장이 완료된 기록이에요. 보관함에서 수정해 주세요.',
-      );
+      if (current.originalText === content) {
+        return current;
+      }
+
+      current = await api.updateCompleted(current, { originalText: content });
+      remember(current);
+      await invalidateDreamData(current.dreamId);
+      return current;
     }
 
     if (!current || current.originalText !== content) {
@@ -313,6 +318,13 @@ export function useDreamRecord() {
     }
 
     return current;
+  }
+
+  async function invalidateDreamData(dreamId: number) {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['dream-record', dreamId] }),
+      queryClient.invalidateQueries({ queryKey: ['dreams'] }),
+    ]);
   }
 
   // 자동 저장 타이머가 항상 최신 run · saveText 를 쓰도록 ref 에 담아 둠
@@ -355,7 +367,7 @@ export function useDreamRecord() {
   ]);
 
   function updateDraft(changes: Partial<DreamDraft>) {
-    if (completed) {
+    if (completed && baseScreen !== 'text') {
       return;
     }
 
@@ -363,10 +375,11 @@ export function useDreamRecord() {
       ...current,
       ...changes,
     }));
+    setSaveError(false);
   }
 
   function toggleEmotion(emotion: Emotion) {
-    if (busy || !ready || completed) {
+    if (busy || !ready || (completed && baseScreen !== 'emotion')) {
       return;
     }
 
@@ -377,6 +390,7 @@ export function useDreamRecord() {
     }
 
     setDraft((current) => ({ ...current, emotions: selection.emotions }));
+    setSaveError(false);
 
     setMessage('');
   }
@@ -393,7 +407,10 @@ export function useDreamRecord() {
       if (baseScreen === 'text' && draft.content.trim()) {
         const saved = await saveText(draft.content);
 
-        remember(await api.submit(saved));
+        const nextDream = saved.recordStatus === 'COMPLETED'
+          ? saved
+          : await api.submit(saved);
+        remember(nextDream);
 
         if (mounted.current) {
           setScreen('emotion');
@@ -409,20 +426,24 @@ export function useDreamRecord() {
           throw new Error('원문을 먼저 저장해 주세요.');
         }
 
-        const result = await api.complete(saved, draft.emotions);
+        const emotionsUnchanged = (Object.keys(emotionCodes) as Emotion[])
+          .filter((emotion) => draft.emotions.includes(emotion))
+          .map((emotion) => emotionCodes[emotion])
+          .sort()
+          .join(',') === [...saved.emotions].sort().join(',');
+
+        const result = saved.recordStatus === 'COMPLETED'
+          ? emotionsUnchanged
+            ? saved
+            : await api.updateCompleted(saved, { emotions: draft.emotions })
+          : await api.complete(saved, draft.emotions);
         remember(result);
 
         if (mounted.current) {
           setScreen('image');
         }
 
-        await queryClient.invalidateQueries({
-          queryKey: ['dream-record', result.dreamId],
-        });
-
-        await queryClient.invalidateQueries({
-          queryKey: ['dreams'],
-        });
+        await invalidateDreamData(result.dreamId);
       }
     }, true);
   }

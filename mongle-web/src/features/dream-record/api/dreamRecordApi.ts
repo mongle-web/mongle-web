@@ -125,7 +125,7 @@ export class RecordApiError extends Error {
 }
 
 async function request<T>(
-  method: 'get' | 'post' | 'put',
+  method: 'get' | 'post' | 'put' | 'patch',
   url: string,
   data?: unknown,
   signal?: AbortSignal,
@@ -273,6 +273,24 @@ export const dreamRecordApi = {
           : {}),
       },
     ),
+
+  updateCompleted: (dream: Dream, update: { originalText?: string; emotions?: Emotion[] }) => {
+    if (update.emotions && (update.emotions.length < 1 || update.emotions.length > MAX_EMOTIONS)) {
+      throw new RecordApiError('EMOTIONS_LIMIT', `감정은 1~${MAX_EMOTIONS}개 선택해 주세요.`);
+    }
+
+    return request<Dream>(
+      'patch',
+      `/api/v1/dreams/${dream.dreamId}`,
+      {
+        revision: dream.revision,
+        ...(update.originalText !== undefined ? { originalText: update.originalText } : {}),
+        ...(update.emotions
+          ? { emotions: update.emotions.map((emotion) => emotionCodes[emotion]) }
+          : {}),
+      },
+    );
+  },
 
   submit: (dream: Dream) =>
     request<Dream>(

@@ -378,7 +378,7 @@ function DreamRecordFlow() {
           </p>
         )}
 
-        {(!ready || flow.saveError) && (
+        {!ready && (
           <SecondaryButton disabled={busy} onClick={flow.restore}>
             서버 기록 다시 불러오기
           </SecondaryButton>
