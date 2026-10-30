@@ -12,7 +12,7 @@ import ImageGeneratingModal from '@/features/dream-connect/components/ImageGener
 import { useCreateWorldImage } from '@/features/dream-connect/hooks/useCreateWorldImage';
 import { useWorldResult } from '@/features/dream-connect/hooks/useWorldResult';
 import { useWorldSummary } from '@/features/dream-connect/hooks/useWorldSummary';
-import { MIN_CONNECT_DREAMS } from '@/features/dream-connect/types/dreamConnect';
+import { IMAGE_TOKEN_COST, MIN_CONNECT_DREAMS } from '@/features/dream-connect/types/dreamConnect';
 import type { ConnectAddState } from '@/features/dream-connect/types/dreamConnect';
 
 // 꿈 연결하기 - 연결 결과 (/connect/:worldId)
@@ -60,8 +60,9 @@ function DreamConnectResultPage() {
   // 생성 중 모달을 닫아도 이미지는 계속 만들어짐 (완성되면 자동으로 이동)
   const [isModalClosed, setIsModalClosed] = useState(false);
 
-  // 연결한 꿈을 원본에서 지워 1개 이하가 되면 서버가 이미지 생성을 막음 → 버튼 비활성화 (디자이너 확인)
-  const canCreateImage = (result?.dreams.length ?? 0) >= MIN_CONNECT_DREAMS;
+  // 완성본에 남은 꿈이 2개 미만이면 서버가 이미지 생성을 막음 → 버튼 비활성화 (디자이너 확인)
+  // 선택한 꿈 수가 아니라 완성본에 실제로 남은 꿈 수로 판단 (백엔드 정책)
+  const canCreateImage = (result?.composedDreamCount ?? 0) >= MIN_CONNECT_DREAMS;
 
   const handleCreateImage = () => {
     if (!canCreateImage) return;
@@ -124,7 +125,7 @@ function DreamConnectResultPage() {
           {/* 피그마: 생성 중에도 버튼은 보라색 그대로 (모달이 위를 덮고, 중복 요청은 막음) */}
           <PrimaryButton disabled={!canCreateImage} onClick={handleCreateImage}>
             그림으로 남기기
-            <TokenCost />
+            <TokenCost amount={IMAGE_TOKEN_COST} />
           </PrimaryButton>
           <SecondaryButton onClick={handleSkipImage}>다음에 만들어볼게요</SecondaryButton>
         </div>

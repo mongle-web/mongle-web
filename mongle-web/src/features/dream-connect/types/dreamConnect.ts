@@ -38,6 +38,9 @@ export interface WorldResult {
   name: string; // 세계관 폴더 이름 (AI 제목이 아직 없을 때 제목으로 사용)
   story: string[]; // 몽글의 꿈 연결 스토리 (문단 단위)
   dreams: ConnectableDream[]; // 연결된 꿈 (날짜순)
+  // 지금 완성본(이야기)에 실제로 남아 있는 꿈 수 (원본 꿈을 지우면 줄어듦)
+  // 이미지 생성 가능 여부는 선택한 꿈 수가 아니라 이 값으로 판단 (2개 이상, 백엔드 정책)
+  composedDreamCount: number;
 }
 
 // 세계관 요약 생성 상태 (스웨거 WorldSummaryResponse.status)
@@ -69,5 +72,6 @@ export interface WorldImage {
   failureCode?: string;
 }
 
-// 이미지 생성에 필요한 토큰(크레딧) 수
-export const IMAGE_TOKEN_COST = 1;
+// 세계관 이미지 최초 생성에 필요한 토큰(크레딧) 수 (백엔드 정책: 최초 생성 3, 첫 재생성 무료, 이후 재생성 1)
+// 생성에 실패하면 토큰을 쓰지 않으므로 "다시 생성하기"도 같은 값
+export const IMAGE_TOKEN_COST = 3;
