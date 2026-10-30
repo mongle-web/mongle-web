@@ -16,6 +16,7 @@ import { useDeleteDream } from '@/features/calendar/hooks/useDeleteDream';
 import { useMonthlyDreams } from '@/features/calendar/hooks/useMonthlyDreams';
 import type { CalendarDay, CalendarDream } from '@/features/calendar/types/calendar';
 import { getCalendarDays, isSameMonth, toDateKey } from '@/features/calendar/utils/calendar';
+import { useDreamDeleteCheck } from '@/features/dream-detail/hooks/useDreamDeleteCheck';
 import BottomNavigation from '@/features/home/components/BottomNavigation';
 
 function CalendarPage() {
@@ -35,6 +36,8 @@ function CalendarPage() {
   const [dreamToDelete, setDreamToDelete] = useState<CalendarDream | null>(null);
 
   const deleteDreamMutation = useDeleteDream();
+  // 삭제 확인 창이 열리면 생성 중인지 · 연결된 꿈(세계관)에 쓰이는지 미리 확인
+  const deleteCheck = useDreamDeleteCheck(dreamToDelete?.id ?? null);
 
   const {
     data: dreams = [],
@@ -198,14 +201,16 @@ function CalendarPage() {
             key="delete-dream"
             title="정말 꿈을 삭제할까요?"
             confirmLabel={deleteDreamMutation.isPending ? '삭제 중...' : '삭제'}
-            isConfirmDisabled={deleteDreamMutation.isPending}
+            isConfirmDisabled={
+              deleteDreamMutation.isPending || deleteCheck.isChecking || !deleteCheck.canDelete
+            }
             onCancel={closeDeleteDialog}
             onConfirm={handleDeleteConfirm}
           >
             <p className="w-full text-[14px] leading-[1.5] font-medium text-b-400">
               {deleteDreamMutation.isError
                 ? '삭제하지 못했어요. 다시 시도해 주세요.'
-                : '삭제하면 다시 되돌릴 수 없어요.'}
+                : deleteCheck.message}
             </p>
           </CalendarDialog>
         )}
