@@ -32,6 +32,7 @@ export function useDreamRecord() {
   const [initial] = useState(() => ({
     date: toDateString(parseRecordDate(params.get('date')) ?? new Date()),
     id: Number(params.get('dreamId')) || null,
+    paymentReturn: Boolean(params.get('orderId')),
   }));
 
   const [draft, setDraft] = useState<DreamDraft>({
@@ -111,12 +112,10 @@ export function useDreamRecord() {
       setDream(saved);
 
       if (saved) {
-        const step =
-          saved.recordStatus === 'COMPLETED'
-            ? 'image'
-            : saved.recordStatus === 'EMOTION_PENDING'
-              ? 'emotion'
-              : 'text';
+        // A normal /dreams/new entry always resumes at text, even if the
+        // server record is already completed. Only an explicit payment return
+        // may restore the image flow automatically.
+        const step: Screen = initial.paymentReturn ? 'image' : 'text';
 
         setDraft({
           date: saved.dreamedAt,
@@ -469,8 +468,24 @@ export function useDreamRecord() {
 
       remember(latest);
 
-      await api.retry(latest);
-      await generation.refetch();
+      const retried = await api.retry(latest);
+      queryClient.setQueryData(
+        ['dream-record', id, 'generation'],
+        retried,
+      );
+
+      // The retry endpoint restarts the failed analysis/story pipeline.
+      // Refresh dependent reads after the generation job reaches a terminal
+      // state; generation itself polls QUEUED/PROCESSING in its query.
+      await queryClient.invalidateQueries({
+        queryKey: ['dream-record', id, 'analysis'],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ['dream-record', id, 'story'],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ['dream-record', id, 'generation'],
+      });
     });
   }
 

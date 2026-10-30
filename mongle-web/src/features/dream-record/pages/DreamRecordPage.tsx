@@ -440,11 +440,6 @@ function DreamRecordFlow() {
           </div>
         )}
 
-        {flow.imageBusy && (
-          <SecondaryButton onClick={() => setLoadingClosed(false)}>
-            이미지 생성 중 · 진행 상황 보기
-          </SecondaryButton>
-        )}
       </footer>
 
       {datePickerOpen && (
