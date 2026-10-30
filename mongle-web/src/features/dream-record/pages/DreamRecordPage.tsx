@@ -8,6 +8,7 @@ import DreamDatePicker from '../components/DreamDatePicker';
 import EmotionSelector from '../components/EmotionSelector';
 import DreamCharge from '../components/DreamCharge';
 import ImageStyleSelector from '../components/ImageStyleSelector';
+import DreamTokenShortageModal from '../components/DreamTokenShortageModal';
 
 import { MAX_LENGTH, parseRecordDate, toDateString } from '../utils/dreamDraft';
 import {
@@ -534,49 +535,14 @@ function DreamRecordFlow() {
       )}
 
       {flow.modal === 'tokens' && (
-        <FlowModal title="토큰이 부족해요" onClose={() => flow.setModal(null)}>
-          <h2 className="text-center text-[18px] font-semibold">토큰이 부족해요!</h2>
-
-          <dl className="mt-10 mb-4 flex flex-col gap-2 text-[12px] leading-[1.5] text-b-300">
-            <div className="flex justify-between">
-              <dt>필요한 토큰</dt>
-              <dd>{cost ?? INITIAL_DREAM_IMAGE_COST}개</dd>
-            </div>
-
-            <div className="flex justify-between">
-              <dt>보유 토큰</dt>
-              <dd>{tokens ?? '—'}개</dd>
-            </div>
-
-            <div className="flex justify-between border-t border-b-600 pt-2">
-              <dt>부족한 토큰</dt>
-              <dd>
-                {tokens == null ? '—' : Math.max(0, (cost ?? INITIAL_DREAM_IMAGE_COST) - tokens)}개
-              </dd>
-            </div>
-          </dl>
-
-          <div className="flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={openCharge}
-              className="h-9 w-full rounded-lg border border-white/40 bg-p-500 px-3 text-[14px] leading-[1.3] font-semibold"
-            >
-              충전하고 바로 생성하기
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                flow.setModal(null);
-                flow.handleSaveWithoutImage();
-              }}
-              className="h-9 w-full rounded-lg border border-white/40 bg-p-100 px-3 text-[14px] leading-[1.3] font-semibold text-[#a09dbe]"
-            >
-              다음에 만들어볼게요
-            </button>
-          </div>
-        </FlowModal>
+        <DreamTokenShortageModal
+          required={cost ?? INITIAL_DREAM_IMAGE_COST}
+          available={tokens}
+          onClose={() => {
+            flow.setModal(null);
+          }}
+          onCharge={openCharge}
+        />
       )}
     </div>
   );

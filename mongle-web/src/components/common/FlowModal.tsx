@@ -27,9 +27,9 @@ function FlowModal({ title, onClose, children }: FlowModalProps) {
       ref={dialogRef}
       aria-label={title}
       className={[
-        'fixed inset-0 m-auto w-[248px]',
+        'fixed inset-0 m-auto h-fit min-h-0 w-[248px]',
         'max-h-[calc(100dvh-40px)] max-w-[calc(100vw-40px)]',
-        'rounded-3xl border-0 bg-n-900/40 p-5 text-b-200',
+        'overflow-visible rounded-[24px] border-0 bg-[rgba(41,40,52,0.4)] p-5 text-b-200',
         'shadow-[0_0_20px_rgba(255,255,255,0.3)] backdrop-blur-xl',
         'backdrop:bg-black/25',
       ].join(' ')}
@@ -43,7 +43,9 @@ function FlowModal({ title, onClose, children }: FlowModalProps) {
         }
       }}
     >
-      <div onClick={(event) => event.stopPropagation()}>{children}</div>
+      <div className="h-fit min-h-0 w-full" onClick={(event) => event.stopPropagation()}>
+        {children}
+      </div>
     </dialog>
   );
 }
