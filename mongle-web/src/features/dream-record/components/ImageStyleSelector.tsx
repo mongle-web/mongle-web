@@ -1,4 +1,3 @@
-
 import cubismImage from '@/assets/images/dream-record/styles/cubism.png';
 import expressionismImage from '@/assets/images/dream-record/styles/expressionism.png';
 import illustrationImage from '@/assets/images/dream-record/styles/illustration.png';
@@ -32,15 +31,9 @@ function ImageStyleSelector({
   const styles = resolveImageStyles(serverStyles);
 
   return (
-    <div
-      role="radiogroup"
-      aria-label="화풍 선택"
-      className="mt-[15px] grid grid-cols-2 gap-4"
-    >
+    <div role="radiogroup" aria-label="화풍 선택" className="mt-[15px] grid grid-cols-2 gap-4">
       {styles.map((style) => {
-        const isSelected =
-          style.serverValue !== null &&
-          selected === style.serverValue;
+        const isSelected = style.serverValue !== null && selected === style.serverValue;
 
         const unavailable = style.serverValue === null;
 
@@ -59,18 +52,10 @@ function ImageStyleSelector({
             }}
             className={[
               // 기본 카드
-              'group relative h-[235px] min-w-0 overflow-hidden rounded-[24px] bg-n-900',
+              'mongle-dream-style-card group relative h-[235px] min-w-0 overflow-hidden rounded-[24px] bg-n-900',
 
               // 기본 애니메이션
-              'transform-gpu transition-all duration-300 ease-out',
-
-              // 마우스 호버 효과
-              'hover:-translate-y-1',
-              'hover:border hover:border-p-300/80',
-              'hover:shadow-[0_0_24px_rgba(188,179,255,0.45)]',
-
-              // 이미지 포커스 효과
-              'active:scale-[0.98]',
+              'transform-gpu transition-[transform,border-color,box-shadow] duration-200 ease-out motion-reduce:transition-none',
 
               // 키보드 접근성
               'focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-p-300',
@@ -81,9 +66,7 @@ function ImageStyleSelector({
                 : 'border border-transparent',
 
               // 서버 미지원 상태
-              unavailable
-                ? 'cursor-not-allowed'
-                : 'cursor-pointer',
+              unavailable ? 'cursor-not-allowed' : 'cursor-pointer',
 
               // 전체 비활성 상태
               disabled ? 'opacity-60' : '',
@@ -95,18 +78,13 @@ function ImageStyleSelector({
               alt=""
               aria-hidden="true"
               className={[
+                'mongle-dream-style-image',
                 'pointer-events-none absolute top-[-9.57%] left-0',
                 'h-[112.33%] w-full max-w-none object-cover',
-                'transition-all duration-500 ease-out',
+                'transition-[filter,transform] duration-200 ease-out motion-reduce:transition-none',
 
                 // 기본 이미지 어둡게
-                !isSelected
-                  ? 'brightness-[0.68] saturate-[0.86]'
-                  : 'brightness-100',
-
-                // 호버 시 이미지 밝아짐
-                'group-hover:brightness-110',
-                'group-hover:scale-[1.05]',
+                !isSelected ? 'brightness-[0.68] saturate-[0.86]' : 'brightness-100',
               ].join(' ')}
             />
 
@@ -115,7 +93,7 @@ function ImageStyleSelector({
               aria-hidden="true"
               className={[
                 'pointer-events-none absolute inset-0 rounded-[24px]',
-                'transition-all duration-300',
+                'transition-opacity duration-200 motion-reduce:transition-none',
 
                 isSelected
                   ? 'bg-[linear-gradient(to_bottom,rgba(0,0,0,0)_58.667%,rgba(0,0,0,0.65)_82.574%)]'
@@ -135,10 +113,7 @@ function ImageStyleSelector({
                 'bg-b-900/10 px-3 py-2',
                 'text-center text-[12px] leading-[1.5]',
                 'font-normal whitespace-nowrap text-b-200',
-                'transition-all duration-300',
-
-                // 호버 시 텍스트 강조
-                'group-hover:scale-105',
+                'transition-colors duration-200 motion-reduce:transition-none',
               ].join(' ')}
             >
               {style.label}
@@ -155,11 +130,7 @@ function ImageStyleSelector({
             )}
 
             {/* 서버 미지원 안내 */}
-            {unavailable && (
-              <span className="sr-only">
-                현재 서버에서 지원하지 않는 화풍
-              </span>
-            )}
+            {unavailable && <span className="sr-only">현재 서버에서 지원하지 않는 화풍</span>}
           </button>
         );
       })}

@@ -14,29 +14,22 @@ function isImageResultState(value: unknown): value is DreamImageResultState {
 
   const imageUrl = value.imageUrl;
 
-  return (
-    typeof imageUrl === 'string' &&
-    /^(https?:\/\/|blob:)/.test(imageUrl)
-  );
+  return typeof imageUrl === 'string' && /^(https?:\/\/|blob:)/.test(imageUrl);
 }
 
 function DreamImageResultPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const result = isImageResultState(location.state)
-    ? location.state
-    : null;
+  const result = isImageResultState(location.state) ? location.state : null;
 
   return (
-    <div className="flex min-h-dvh flex-col bg-b-900 text-b-200">
+    <div className="mongle-dream-record flex min-h-dvh flex-col bg-b-900 text-b-200">
       <main className="flex flex-1 flex-col items-center px-5 pt-[154px]">
         {result ? (
           <>
             <div className="text-center">
-              <h1 className="text-[20px] leading-[1.4] font-semibold">
-                꿈 이미지가 완성되었어요
-              </h1>
+              <h1 className="text-[20px] leading-[1.4] font-semibold">꿈 이미지가 완성되었어요</h1>
 
               <p className="mt-3 text-[16px] leading-[1.5] text-b-400">
                 {result.saved === true
@@ -54,9 +47,7 @@ function DreamImageResultPage() {
           </>
         ) : (
           <div className="text-center">
-            <h1 className="text-[20px] font-semibold">
-              아직 생성된 이미지가 없어요
-            </h1>
+            <h1 className="text-[20px] font-semibold">아직 생성된 이미지가 없어요</h1>
 
             <p className="mt-3 text-[14px] leading-[1.6] text-b-400">
               꿈 기록 화면에서 이미지를 생성하면

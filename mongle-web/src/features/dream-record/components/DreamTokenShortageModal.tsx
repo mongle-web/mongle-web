@@ -11,7 +11,7 @@ export default function DreamTokenShortageModal({ required, available, onClose, 
   const shortage = available === null ? null : Math.max(0, required - available);
 
   return (
-    <FlowModal title="토큰이 부족해요" onClose={onClose} backdropBlur={23}>
+    <FlowModal title="토큰이 부족해요" onClose={onClose} backdropBlur={23} animate>
       <div className="flex w-full flex-col items-center gap-10">
         <h2 className="w-full text-center text-[18px] leading-[1.4] font-semibold">
           토큰이 부족해요!
