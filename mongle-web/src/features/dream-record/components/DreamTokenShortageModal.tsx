@@ -11,29 +11,35 @@ export default function DreamTokenShortageModal({ required, available, onClose, 
   const shortage = available === null ? null : Math.max(0, required - available);
 
   return (
-    <FlowModal title="토큰이 부족해요" onClose={onClose} backdropBlur={false}>
+    <FlowModal title="토큰이 부족해요" onClose={onClose} backdropBlur={23}>
       <div className="flex w-full flex-col items-center gap-10">
         <h2 className="w-full text-center text-[18px] leading-[1.4] font-semibold">
           토큰이 부족해요!
         </h2>
 
         <div className="flex w-full flex-col gap-4">
-          <dl className="flex w-full flex-col gap-2 text-[12px] leading-[1.5] text-b-300">
-            <div className="flex justify-between">
+          <div className="flex w-full flex-col gap-2 text-[12px] leading-[1.5] text-b-300">
+            <dl className="flex justify-between">
               <dt>필요한 토큰</dt>
               <dd>{required}개</dd>
-            </div>
+            </dl>
 
-            <div className="flex justify-between">
+            <dl className="flex justify-between">
               <dt>보유 토큰</dt>
               <dd>{available === null ? '—' : `${available}개`}</dd>
-            </div>
+            </dl>
 
-            <div className="flex justify-between border-t border-b-300 pt-2">
+            <div
+              role="separator"
+              aria-orientation="horizontal"
+              className="h-0 w-full shrink-0 border-t border-b-300"
+            />
+
+            <dl className="flex justify-between">
               <dt>부족한 토큰</dt>
               <dd>{shortage === null ? '—' : `${shortage}개`}</dd>
-            </div>
-          </dl>
+            </dl>
+          </div>
 
           <div className="flex w-full shrink-0 flex-col gap-2">
             <button

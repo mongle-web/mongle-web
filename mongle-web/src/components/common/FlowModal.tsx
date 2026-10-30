@@ -5,7 +5,7 @@ interface FlowModalProps {
   title: string; // 화면에는 안 보이고 스크린리더용
   onClose: () => void;
   children: ReactNode;
-  backdropBlur?: boolean;
+  backdropBlur?: boolean | number;
 }
 
 // 진행 상황 · 안내용 유리 느낌 모달 (피그마: 너비 248, 모서리 24, 여백 20)
@@ -14,6 +14,10 @@ interface FlowModalProps {
 // 꿈 기록(DreamRecordPage)에서 쓰던 것을 꿈 연결 등에서도 쓰도록 공통으로 분리
 function FlowModal({ title, onClose, children, backdropBlur = true }: FlowModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const backdropFilter =
+    backdropBlur === false
+      ? undefined
+      : `blur(${typeof backdropBlur === 'number' ? backdropBlur : 24}px)`;
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -27,12 +31,12 @@ function FlowModal({ title, onClose, children, backdropBlur = true }: FlowModalP
     <dialog
       ref={dialogRef}
       aria-label={title}
+      style={backdropFilter ? { backdropFilter, WebkitBackdropFilter: backdropFilter } : undefined}
       className={[
         'fixed inset-0 m-auto h-fit min-h-0 w-[248px]',
         'max-h-[calc(100dvh-40px)] max-w-[calc(100vw-40px)]',
         'overflow-visible rounded-[24px] border-0 bg-[rgba(41,40,52,0.4)] p-5 text-b-200',
         'shadow-[0_0_20px_rgba(255,255,255,0.3)]',
-        backdropBlur ? 'backdrop-blur-xl' : '',
         'backdrop:bg-black/25',
       ].join(' ')}
       onCancel={(event) => {
