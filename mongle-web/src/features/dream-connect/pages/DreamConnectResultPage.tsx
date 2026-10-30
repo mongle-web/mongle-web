@@ -4,7 +4,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import errorIcon from '@/assets/icons/dream-connect/error.svg';
-import { BackHeader, PrimaryButton, SecondaryButton, TokenCost } from '@/components/common';
+import {
+  BackHeader,
+  PrimaryButton,
+  SecondaryButton,
+  TokenCost,
+  TokenShortageModal,
+} from '@/components/common';
 import DreamImage from '@/components/common/DreamImage';
 import ConnectedDreamList from '@/features/dream-connect/components/ConnectedDreamList';
 import ConnectFailModal from '@/features/dream-connect/components/ConnectFailModal';
@@ -13,10 +19,8 @@ import ConnectStateView from '@/features/dream-connect/components/ConnectStateVi
 import ConnectStoryCard from '@/features/dream-connect/components/ConnectStoryCard';
 import ConnectTagCard from '@/features/dream-connect/components/ConnectTagCard';
 import { useConnectDreams } from '@/features/dream-connect/hooks/useConnectDreams';
-import {
-  getRequiredTokens,
-  hasEnoughTokens,
-} from '@/features/dream-connect/hooks/useCreateWorldImage';
+import { checkTokens, getRequiredTokens } from '@/features/dream-connect/hooks/useCreateWorldImage';
+import type { TokenCheck } from '@/features/dream-connect/hooks/useCreateWorldImage';
 import { useWorldResult } from '@/features/dream-connect/hooks/useWorldResult';
 import {
   useWorldComposition,
@@ -103,17 +107,21 @@ function DreamConnectResultPage() {
   // "그림으로 남기기" · "이미지 다시 생성하기" → 토큰을 먼저 확인하고 화풍 선택 화면으로
   // (디자이너: 비용은 이 화면 버튼에 표시, 화풍 선택 화면에서는 표시하지 않음)
   const [isCheckingTokens, setIsCheckingTokens] = useState(false);
+  // 토큰이 부족할 때 "토큰이 부족해요!" 모달에 보여줄 값 (null이면 모달 닫힘)
+  const [shortage, setShortage] = useState<TokenCheck | null>(null);
 
   const handleCreateImage = async () => {
     if (!canCreateImage || isCheckingTokens) return;
     setIsCheckingTokens(true);
 
     try {
-      if (await hasEnoughTokens(worldId)) {
+      const tokens = await checkTokens(worldId);
+
+      if (tokens.isEnough) {
         navigate(`/connect/${worldId}/style`);
+      } else {
+        setShortage(tokens);
       }
-      // TODO: 토큰이 부족하면 꿈 기록 화면의 "토큰이 부족해요!" 모달 · 충전 화면을 공통으로 옮겨서 사용
-      //   (꿈 기록 담당과 협의, 그전까지는 이동하지 않음)
     } catch {
       // 잔액을 확인하지 못해도 화풍 선택으로 넘어감 (생성할 때 한 번 더 확인)
       navigate(`/connect/${worldId}/style`);
@@ -226,6 +234,17 @@ function DreamConnectResultPage() {
 
       {reconnectStatus === 'connecting' && <ConnectingModal onClose={cancel} />}
       {reconnectStatus === 'error' && <ConnectFailModal type="connect" onClose={resetError} />}
+
+      {/* "충전하고 바로 생성하기" → 화풍 선택 화면의 충전 단계로 (충전이 끝나면 화풍을 고르고 생성) */}
+      {shortage && (
+        <TokenShortageModal
+          required={shortage.required}
+          owned={shortage.owned}
+          onCharge={() => navigate(`/connect/${worldId}/style?view=charge`)}
+          onLater={() => setShortage(null)}
+          onClose={() => setShortage(null)}
+        />
+      )}
     </div>
   );
 }

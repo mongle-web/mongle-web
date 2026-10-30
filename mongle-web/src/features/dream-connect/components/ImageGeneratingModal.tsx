@@ -27,7 +27,12 @@ function ImageGeneratingModal({ onClose }: ImageGeneratingModalProps) {
         />
       </div>
 
-      <h2 role="status" className="text-center text-[18px] leading-[1.4] font-semibold">
+      {/* 피그마: 문구 상자 너비 208에 한 줄 (iPhone 16 - 138)
+          기기 글꼴이 피그마 글꼴(Wanted Sans)보다 넓으면 두 줄로 꺾여서, 줄바꿈 없이 모달 여백(좌우 20)까지 쓰게 함 */}
+      <h2
+        role="status"
+        className="-mx-5 text-center text-[18px] leading-[1.4] font-semibold whitespace-nowrap"
+      >
         이미지를 생성하고 있어요...
       </h2>
     </FlowModal>
