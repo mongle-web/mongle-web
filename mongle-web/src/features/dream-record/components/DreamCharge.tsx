@@ -22,7 +22,6 @@ interface Props {
   cost: number;
   canGenerate: boolean;
   onContinue: () => void;
-  onBack: () => void;
 }
 
 const orderLabels: Record<PaymentOrder['state'], string> = {
@@ -36,7 +35,7 @@ const orderLabels: Record<PaymentOrder['state'], string> = {
   PAYMENT_REVIEW: '결제 확인이 필요해요. 확인이 끝날 때까지 기다려 주세요.',
 };
 
-export default function DreamCharge({ dreamId, cost, canGenerate, onContinue, onBack }: Props) {
+export default function DreamCharge({ dreamId, cost, canGenerate, onContinue }: Props) {
   const [params, setParams] = useSearchParams();
 
   const orderId = params.get('orderId');
@@ -248,8 +247,8 @@ export default function DreamCharge({ dreamId, cost, canGenerate, onContinue, on
   }
 
   return (
-    <section className="flex flex-col gap-4">
-      <div className="flex h-[52px] items-center justify-between rounded-2xl bg-[#292834] px-5">
+    <section className="flex flex-col gap-[14px]">
+      <div className="flex min-h-[53px] items-center justify-between rounded-2xl bg-[#292834] px-5 py-4">
         <span className="text-[14px] text-[#737377]">보유 토큰</span>
         <strong className="text-[14px] font-semibold">{balance.data?.available ?? '—'} 개</strong>
       </div>
@@ -271,7 +270,7 @@ export default function DreamCharge({ dreamId, cost, canGenerate, onContinue, on
               {products.data.map((product) => (
                 <div
                   key={product.productId}
-                  className="flex min-h-[42px] items-center justify-between gap-4"
+                  className="flex min-h-[34px] items-center justify-between gap-4"
                 >
                   <p className="text-[14px] font-medium text-b-200" title={product.name}>
                     {product.credits} 토큰
@@ -281,7 +280,7 @@ export default function DreamCharge({ dreamId, cost, canGenerate, onContinue, on
                     type="button"
                     disabled={busy}
                     onClick={() => setSelectedProduct(product)}
-                    className="h-9 min-w-[100px] rounded-full bg-[#7a6ce3] px-4 text-[14px] font-semibold text-b-200 disabled:opacity-40"
+                    className="h-[34px] min-w-[100px] rounded-full bg-[#7a6ce3] px-4 text-[14px] font-semibold text-b-200 disabled:opacity-40"
                   >
                     {product.price.toLocaleString('ko-KR')}
                     {product.currency === 'KRW' ? '원' : ` ${product.currency}`}
@@ -373,22 +372,22 @@ export default function DreamCharge({ dreamId, cost, canGenerate, onContinue, on
         </p>
       )}
 
-      <SecondaryButton
-        disabled={busy}
-        onClick={() => {
-          if (orderId) {
-            void order.refetch();
-          } else if (pendingRequest) {
-            void history.refetch();
-          } else {
-            void products.refetch();
-          }
+      {(orderId || pendingRequest) && (
+        <SecondaryButton
+          disabled={busy}
+          onClick={() => {
+            if (orderId) {
+              void order.refetch();
+            } else {
+              void history.refetch();
+            }
 
-          void balance.refetch();
-        }}
-      >
-        다시 확인
-      </SecondaryButton>
+            void balance.refetch();
+          }}
+        >
+          다시 확인
+        </SecondaryButton>
+      )}
 
       {(terminal || paid) && (
         <SecondaryButton disabled={busy} onClick={clearTerminalOrder}>
@@ -412,10 +411,6 @@ export default function DreamCharge({ dreamId, cost, canGenerate, onContinue, on
           </PrimaryButton>
         </>
       )}
-
-      <SecondaryButton disabled={busy} onClick={onBack}>
-        그림 생성 화면으로 돌아가기
-      </SecondaryButton>
 
       {selectedProduct && (
         <FlowModal title="결제 정보를 입력해 주세요" onClose={() => setSelectedProduct(null)}>

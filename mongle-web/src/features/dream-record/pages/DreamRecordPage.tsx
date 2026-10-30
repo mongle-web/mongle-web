@@ -319,7 +319,6 @@ function DreamRecordFlow() {
             cost={cost ?? 0}
             canGenerate={flow.canGenerate && (flow.screen === 'result' || validChoice)}
             onContinue={continueAfterPayment}
-            onBack={() => rememberImageStep(validChoice ? 'offer' : 'style')}
           />
         )}
 
