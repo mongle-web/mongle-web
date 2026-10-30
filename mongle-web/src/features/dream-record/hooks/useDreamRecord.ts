@@ -37,6 +37,8 @@ export function useDreamRecord() {
     date: toDateString(parseRecordDate(params.get('date')) ?? new Date()),
     id: Number(params.get('dreamId')) || null,
     paymentReturn: Boolean(params.get('orderId')),
+    // 꿈 상세 "이미지 생성하기"로 들어온 경우 (/dreams/new?dreamId=&date=&entry=image)
+    imageEntry: params.get('entry') === 'image',
   }));
 
   const [draft, setDraft] = useState<DreamDraft>({
@@ -122,7 +124,11 @@ export function useDreamRecord() {
         // A normal /dreams/new entry always resumes at text, even if the
         // server record is already completed. Only an explicit payment return
         // may restore the image flow automatically.
-        const step: Screen = initial.paymentReturn ? 'image' : 'text';
+        // 꿈 상세에서 이미지 생성으로 들어오면 텍스트 · 감정은 그대로 두고 화풍 선택부터 시작
+        const step: Screen =
+          initial.paymentReturn || (initial.imageEntry && saved.recordStatus === 'COMPLETED')
+            ? 'image'
+            : 'text';
 
         setDraft({
           date: saved.dreamedAt,

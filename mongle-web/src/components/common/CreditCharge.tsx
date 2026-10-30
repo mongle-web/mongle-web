@@ -3,7 +3,9 @@ import axios from 'axios';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 
-// TODO: 결제 · 잔액 API를 공통 위치(src/api)로 옮길지 꿈 기록 담당과 협의 (지금은 꿈 기록 API 그대로 사용)
+// TODO: 결제 · 잔액 API와 결제 유틸을 공통 위치(src/api)로 옮길지 꿈 기록 담당과 협의 (지금은 꿈 기록 쪽 그대로 사용)
+import { dreamRecordApi, errorMessage } from '@/features/dream-record/api/dreamRecordApi';
+
 import {
   dreamPaymentApi,
   isPaymentComplete,
@@ -11,8 +13,10 @@ import {
   type CreditProduct,
   type PaymentOrder,
 } from '@/features/dream-record/api/dreamPaymentApi';
-import { dreamRecordApi, errorMessage } from '@/features/dream-record/api/dreamRecordApi';
+import { confirmPaymentForImage } from '@/features/dream-record/utils/paymentWorkflow';
+import { runWithRequestLock } from '@/features/dream-record/utils/requestLock';
 
+import FlowModal from './FlowModal';
 import PrimaryButton from './PrimaryButton';
 import SecondaryButton from './SecondaryButton';
 import TokenCost from './TokenCost';
@@ -20,10 +24,9 @@ import TokenCost from './TokenCost';
 interface Props {
   // 결제 요청 흔적을 남길 sessionStorage 키 (화면마다 다르게, 예: 꿈 id · 세계관 id 기준)
   storageKey: string;
-  cost: number; // 충전 후 바로 쓸 토큰 수
-  canGenerate: boolean; // 충전 후 바로 생성할 수 있는 상태인지 (화풍 선택 등)
-  onContinue: () => void; // 결제 · 잔액 확인이 끝난 뒤 돌아갈 동작 (각 화면에서 전달)
-  onBack: () => void;
+  cost: number;
+  canGenerate: boolean;
+  onContinue: () => void;
 }
 
 const orderLabels: Record<PaymentOrder['state'], string> = {
@@ -37,12 +40,10 @@ const orderLabels: Record<PaymentOrder['state'], string> = {
   PAYMENT_REVIEW: '결제 확인이 필요해요. 확인이 끝날 때까지 기다려 주세요.',
 };
 
-// 토큰 충전 화면 (상품 선택 → 결제창 → 결제 · 지급 확인 → 돌아가서 생성)
-// 꿈 기록 화면(DreamCharge)을 꿈 연결 등에서도 쓰도록 공통으로 분리
-// - 결제 처리 · 화면은 그대로, 충전 후 돌아갈 동작(onContinue)만 각 화면에서 넘김
+// 토큰 충전 화면 (꿈 기록 · 꿈 연결 공통, 꿈 기록 담당이 피그마대로 만든 화면)
+// - 결제 처리 · 화면은 그대로, 충전 후 돌아갈 동작(onContinue)과 결제 기록 키(storageKey)만 각 화면에서 전달
 // - 주문 번호는 주소의 ?orderId= 로 유지 (결제창에서 돌아오거나 새로고침해도 이어서 확인)
-// TODO: 꿈 기록 담당의 진입 처리 PR이 머지되면 꿈 기록 화면도 이 컴포넌트로 교체
-export default function CreditCharge({ storageKey, cost, canGenerate, onContinue, onBack }: Props) {
+export default function CreditCharge({ storageKey, cost, canGenerate, onContinue }: Props) {
   const [params, setParams] = useSearchParams();
 
   const orderId = params.get('orderId');
@@ -57,6 +58,7 @@ export default function CreditCharge({ storageKey, cost, canGenerate, onContinue
   });
 
   const [phone, setPhone] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState<CreditProduct | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -107,6 +109,7 @@ export default function CreditCharge({ storageKey, cost, canGenerate, onContinue
 
   function chooseOrder(value: PaymentOrder) {
     queryClient.setQueryData(['dream-payments', 'order', value.orderId], value);
+    setSelectedProduct(null);
 
     setParams(
       (current) => {
@@ -120,7 +123,7 @@ export default function CreditCharge({ storageKey, cost, canGenerate, onContinue
   }
 
   async function create(product: CreditProduct) {
-    if (lock.current || pendingRequest || orderId) {
+    if (pendingRequest || orderId) {
       return;
     }
 
@@ -131,58 +134,58 @@ export default function CreditCharge({ storageKey, cost, canGenerate, onContinue
       return;
     }
 
-    lock.current = true;
-    setBusy(true);
-    setMessage('');
+    await runWithRequestLock(lock, async () => {
+      setBusy(true);
+      setMessage('');
 
-    try {
-      const requestId = crypto.randomUUID();
-
-      // 응답을 놓친 주문을 자동으로 다시 만들지 않도록 요청 흔적을 남긴다.
-      // 휴대폰 번호와 결제 URL은 저장하지 않는다.
       try {
-        sessionStorage.setItem(
-          key,
-          JSON.stringify({
-            requestId,
-            productId: product.productId,
-          }),
-        );
-      } catch {
-        setMessage('주문 식별자를 안전하게 보관할 수 없어 결제를 시작하지 않았어요.');
-        return;
-      }
+        const requestId = crypto.randomUUID();
 
-      setPendingRequest(true);
-
-      const result = await dreamPaymentApi.create({
-        requestId,
-        productId: product.productId,
-        buyerPhone,
-      });
-
-      chooseOrder(result);
-    } catch (error) {
-      if (axios.isAxiosError(error) && [400, 401, 403].includes(error.response?.status ?? 0)) {
+        // 응답을 놓친 주문을 자동으로 다시 만들지 않도록 요청 흔적을 남긴다.
+        // 휴대폰 번호와 결제 URL은 저장하지 않는다.
         try {
-          sessionStorage.removeItem(key);
+          sessionStorage.setItem(
+            key,
+            JSON.stringify({
+              requestId,
+              productId: product.productId,
+            }),
+          );
         } catch {
-          // 서버가 거절한 요청은 화면에서 다시 선택할 수 있게 한다.
+          setMessage('주문 식별자를 안전하게 보관할 수 없어 결제를 시작하지 않았어요.');
+          return;
         }
 
-        setPendingRequest(false);
-        setMessage(errorMessage(error));
-      } else {
-        setMessage(
-          `${errorMessage(error)} 같은 주문 식별자를 유지하고 아래 주문 내역에서 먼저 확인해 주세요.`,
-        );
+        setPendingRequest(true);
 
-        await history.refetch();
+        const result = await dreamPaymentApi.create({
+          requestId,
+          productId: product.productId,
+          buyerPhone,
+        });
+
+        chooseOrder(result);
+      } catch (error) {
+        if (axios.isAxiosError(error) && [400, 401, 403].includes(error.response?.status ?? 0)) {
+          try {
+            sessionStorage.removeItem(key);
+          } catch {
+            // 서버가 거절한 요청은 화면에서 다시 선택할 수 있게 한다.
+          }
+
+          setPendingRequest(false);
+          setMessage(errorMessage(error));
+        } else {
+          setMessage(
+            `${errorMessage(error)} 같은 주문 식별자를 유지하고 아래 주문 내역에서 먼저 확인해 주세요.`,
+          );
+
+          await history.refetch();
+        }
+      } finally {
+        setBusy(false);
       }
-    } finally {
-      lock.current = false;
-      setBusy(false);
-    }
+    });
   }
 
   function clearTerminalOrder() {
@@ -210,89 +213,82 @@ export default function CreditCharge({ storageKey, cost, canGenerate, onContinue
   }
 
   async function continueGeneration() {
-    if (lock.current || !canGenerate || !orderId) {
+    if (!canGenerate || !orderId) {
       return;
     }
 
-    lock.current = true;
-    setBusy(true);
-    setMessage('');
-
-    try {
-      const latest = await dreamPaymentApi.order(orderId);
-
-      queryClient.setQueryData(['dream-payments', 'order', orderId], latest);
-
-      if (!isPaymentComplete(latest)) {
-        throw new Error('결제와 토큰 지급이 아직 확인되지 않았어요.');
-      }
-
-      const latestBalance = await dreamRecordApi.balance();
-
-      queryClient.setQueryData(['dream-record', 'balance'], latestBalance);
-
-      if (latestBalance.spendingBlocked || latestBalance.available < cost) {
-        throw new Error('이미지 생성에 사용할 수 있는 토큰이 부족하거나 결제 확인 중이에요.');
-      }
+    await runWithRequestLock(lock, async () => {
+      setBusy(true);
+      setMessage('');
 
       try {
-        sessionStorage.removeItem(key);
-      } catch {
-        // 실제 결제 완료 여부와 잔액은 서버에서 이미 확인했다.
-      }
+        const result = await confirmPaymentForImage(orderId, cost, {
+          order: (id) => dreamPaymentApi.order(id),
+          balance: () => dreamRecordApi.balance(),
+        });
 
-      onContinue();
-    } catch (error) {
-      setMessage(errorMessage(error));
-    } finally {
-      lock.current = false;
-      setBusy(false);
-    }
+        queryClient.setQueryData(['dream-payments', 'order', orderId], result.order);
+
+        if (result.kind === 'waiting') {
+          throw new Error('결제가 아직 확인되지 않았어요.');
+        }
+
+        queryClient.setQueryData(['dream-record', 'balance'], result.balance);
+
+        if (result.kind === 'insufficient') {
+          throw new Error('토큰 반영을 확인한 뒤 다시 시도해 주세요.');
+        }
+
+        try {
+          sessionStorage.removeItem(key);
+        } catch {
+          // 실제 결제 완료 여부와 잔액은 서버에서 이미 확인했다.
+        }
+
+        onContinue();
+      } catch (error) {
+        setMessage(errorMessage(error));
+      } finally {
+        setBusy(false);
+      }
+    });
   }
 
   return (
-    <section className="flex flex-col gap-4">
-      <div className="flex h-[52px] items-center justify-between rounded-2xl bg-n-900 px-5">
-        <span className="text-[14px] text-b-600">보유 토큰</span>
-        <strong className="text-[14px] font-semibold">{balance.data?.available ?? '—'}개</strong>
+    <section className="flex flex-col gap-[14px]">
+      <div className="flex min-h-[53px] items-center justify-between rounded-2xl bg-[#292834] px-5 py-4">
+        <span className="text-[14px] text-[#737377]">보유 토큰</span>
+        <strong className="text-[14px] font-semibold">{balance.data?.available ?? '—'} 개</strong>
       </div>
 
       {!orderId && !pendingRequest && (
         <>
-          <label className="text-[14px] text-b-400">
-            결제용 휴대폰 번호
-            <input
-              aria-label="결제용 휴대폰 번호"
-              type="tel"
-              autoComplete="tel"
-              value={phone}
-              onChange={(event) => setPhone(event.target.value)}
-              disabled={busy}
-              placeholder="01012345678"
-              className="mt-2 h-[52px] w-full rounded-2xl border-0 bg-n-900 px-5 text-b-200 outline-none placeholder:text-b-600 focus:ring-2 focus:ring-p-300"
-            />
-          </label>
+          {products.isPending && (
+            <p role="status" className="px-1 text-sm text-b-400">
+              충전 상품을 불러오고 있어요.
+            </p>
+          )}
 
-          {products.isPending && <p role="status">충전 상품을 불러오고 있어요.</p>}
-
-          {products.data?.length === 0 && <p>현재 구매할 수 있는 충전 상품이 없어요.</p>}
+          {products.data?.length === 0 && (
+            <p className="px-1 text-sm text-b-400">현재 구매할 수 있는 상품이 없어요.</p>
+          )}
 
           {!!products.data?.length && (
-            <div className="flex flex-col rounded-2xl bg-n-900 px-5 py-2">
+            <div className="flex flex-col gap-6 rounded-2xl bg-[#292834] px-5 py-4">
               {products.data.map((product) => (
                 <div
                   key={product.productId}
-                  className="flex min-h-[58px] items-center justify-between gap-4"
+                  className="flex min-h-[34px] items-center justify-between gap-4"
                 >
-                  <p className="text-[14px] font-medium" title={product.name}>
+                  <p className="text-[14px] font-medium text-b-200" title={product.name}>
                     {product.credits} 토큰
                   </p>
 
                   <button
                     type="button"
                     disabled={busy}
-                    onClick={() => void create(product)}
-                    className="h-9 min-w-[100px] rounded-full bg-p-500 px-5 text-[14px] font-semibold disabled:opacity-40"
+                    onClick={() => setSelectedProduct(product)}
+                    className="h-[34px] min-w-[100px] rounded-full bg-[#7a6ce3] px-4 text-[14px] font-semibold text-b-200 disabled:opacity-40"
                   >
                     {product.price.toLocaleString('ko-KR')}
                     {product.currency === 'KRW' ? '원' : ` ${product.currency}`}
@@ -306,8 +302,8 @@ export default function CreditCharge({ storageKey, cost, canGenerate, onContinue
 
       {pendingRequest && !orderId && (
         <>
-          <p role="status">
-            주문 접수 결과를 확인하고 있어요. 방금 요청한 상품과 시간을 확인해 주문을 선택해 주세요.
+          <p role="status" className="text-sm text-b-400">
+            결제 요청을 확인하고 있어요.
           </p>
 
           {history.data?.items.map((item) => (
@@ -328,8 +324,8 @@ export default function CreditCharge({ storageKey, cost, canGenerate, onContinue
           ))}
 
           {history.data?.items.length === 0 && (
-            <p className="text-sm">
-              조회된 주문이 없어요. 새 주문을 만들기 전에 잠시 후 다시 확인해 주세요.
+            <p className="text-sm text-b-400">
+              결제 요청 상태를 확인할 수 없어요. 다시 조회해 주세요.
             </p>
           )}
         </>
@@ -384,22 +380,22 @@ export default function CreditCharge({ storageKey, cost, canGenerate, onContinue
         </p>
       )}
 
-      <SecondaryButton
-        disabled={busy}
-        onClick={() => {
-          if (orderId) {
-            void order.refetch();
-          } else if (pendingRequest) {
-            void history.refetch();
-          } else {
-            void products.refetch();
-          }
+      {(orderId || pendingRequest) && (
+        <SecondaryButton
+          disabled={busy}
+          onClick={() => {
+            if (orderId) {
+              void order.refetch();
+            } else {
+              void history.refetch();
+            }
 
-          void balance.refetch();
-        }}
-      >
-        상태 다시 확인
-      </SecondaryButton>
+            void balance.refetch();
+          }}
+        >
+          다시 확인
+        </SecondaryButton>
+      )}
 
       {(terminal || paid) && (
         <SecondaryButton disabled={busy} onClick={clearTerminalOrder}>
@@ -409,24 +405,53 @@ export default function CreditCharge({ storageKey, cost, canGenerate, onContinue
 
       {paid && (
         <>
-          <p className="text-sm">
-            충전이 완료됐어요. 토큰을 사용해 선택한 화풍으로 그림을 만들 수 있어요.
-          </p>
-
-          {!canGenerate && (
-            <p className="text-sm text-b-400">화풍 선택과 꿈 분석 완료를 확인해 주세요.</p>
-          )}
-
-          <PrimaryButton disabled={busy || !canGenerate} onClick={() => void continueGeneration()}>
+          <PrimaryButton
+            disabled={
+              busy ||
+              !canGenerate ||
+              balance.data?.available === undefined ||
+              balance.data.available < cost
+            }
+            onClick={() => void continueGeneration()}
+          >
             토큰 사용하고 이미지 생성
             <TokenCost amount={cost} />
           </PrimaryButton>
         </>
       )}
 
-      <SecondaryButton disabled={busy} onClick={onBack}>
-        그림 생성 화면으로 돌아가기
-      </SecondaryButton>
+      {selectedProduct && (
+        <FlowModal
+          title="결제 정보를 입력해 주세요"
+          onClose={() => setSelectedProduct(null)}
+          animate
+        >
+          <label className="block text-left text-[14px] text-b-400">
+            결제용 휴대폰 번호
+            <input
+              aria-label="결제용 휴대폰 번호"
+              type="tel"
+              autoComplete="tel"
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              disabled={busy}
+              placeholder="01012345678"
+              className="mt-2 h-[52px] w-full rounded-2xl border-0 bg-n-900 px-5 text-b-200 outline-none placeholder:text-b-600 focus:ring-2 focus:ring-p-300"
+            />
+          </label>
+          <p className="mt-4 text-center text-sm">
+            {selectedProduct.credits} 토큰 · {selectedProduct.price.toLocaleString('ko-KR')}원
+          </p>
+          <div className="mt-5 flex flex-col gap-3">
+            <PrimaryButton disabled={busy} onClick={() => void create(selectedProduct)}>
+              결제 진행
+            </PrimaryButton>
+            <SecondaryButton disabled={busy} onClick={() => setSelectedProduct(null)}>
+              취소
+            </SecondaryButton>
+          </div>
+        </FlowModal>
+      )}
     </section>
   );
 }

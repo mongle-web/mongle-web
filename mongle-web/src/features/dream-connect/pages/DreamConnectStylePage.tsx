@@ -89,15 +89,15 @@ function DreamConnectStylePage() {
   if (isChargeView) {
     return (
       <div className="min-h-dvh bg-b-900">
-        <BackHeader title="꿈 연결하기" />
+        {/* 꿈 기록의 충전 화면과 같게: 제목 "토큰 충전", 뒤로 가기는 화풍 선택으로 */}
+        <BackHeader title="토큰 충전" onBack={() => updateParams({ view: null, orderId: null })} />
 
-        <main className="px-5 pt-5 pb-10">
+        <main className="px-5 pt-5">
           <CreditCharge
             storageKey={`mongle:payment-pending:world-${worldId}`}
             cost={getRequiredTokens(image)}
             canGenerate
             onContinue={continueAfterCharge}
-            onBack={() => updateParams({ view: null, orderId: null })}
           />
         </main>
       </div>
@@ -154,9 +154,8 @@ function DreamConnectStylePage() {
       {status === 'noTokens' && tokenCheck && (
         <TokenShortageModal
           required={tokenCheck.required}
-          owned={tokenCheck.owned}
+          available={tokenCheck.owned}
           onCharge={openCharge}
-          onLater={resetStatus}
           onClose={resetStatus}
         />
       )}

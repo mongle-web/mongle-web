@@ -27,8 +27,11 @@ function DreamDetailPage() {
     navigate(`/dreams/${id}/edit`);
   };
 
+  // 이미지가 없는 꿈 → 꿈 기록의 화풍 선택 → 생성 흐름 재사용 (꿈 기록 담당과 협의)
+  // date: 꿈 기록 화면은 주소의 날짜와 꿈 날짜가 같아야 해서 같이 넘김
   const handleCreateImage = () => {
-    // TODO: 기존 꿈으로 이미지 생성하는 흐름이 정해지면 연결 (꿈 기록 담당과 협의)
+    if (!dream) return;
+    navigate(`/dreams/new?dreamId=${dream.id}&date=${dream.date}&entry=image`);
   };
 
   return (
