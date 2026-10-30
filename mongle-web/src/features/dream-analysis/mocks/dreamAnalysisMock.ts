@@ -1,7 +1,8 @@
 import type { EmotionStat } from '@/features/dream-analysis/components/EmotionSection';
 import type { KeywordStat } from '@/features/dream-analysis/components/KeywordSection';
 
-// TODO: API 연동 시 제거
+// 로컬 mock 로그인(VITE_AUTH_MOCK=true, 개발 토큰 없음)일 때 API 대신 돌려주는 데이터
+// 실제 데이터 없이도 로컬에서 꽉 찬 화면(키워드 배치 · 감정 막대 · 해석 본문)을 확인하는 용도
 
 // 자주 나타난 키워드
 export const mockKeywords: KeywordStat[] = [
