@@ -24,6 +24,7 @@ import {
 import { readImageIntent, writeImageIntent } from '../utils/imageIntent';
 import { getImageCost } from '../utils/imageCost';
 import { runImageWorkflow } from '../utils/imageWorkflow';
+import { runWithRequestLock } from '../utils/requestLock';
 
 type Screen = 'text' | 'emotion' | 'image' | 'complete';
 
@@ -241,31 +242,30 @@ export function useDreamRecord() {
   const tokens = balance.data?.available ?? null;
 
   async function run(action: () => Promise<void>, saving = false) {
-    if (lock.current || !ready) {
+    if (!ready) {
       return;
     }
 
-    lock.current = true;
-    setBusy(true);
-    setMessage('');
+    await runWithRequestLock(lock, async () => {
+      setBusy(true);
+      setMessage('');
 
-    try {
-      await action();
-    } catch (error) {
-      if (mounted.current) {
-        setMessage(errorMessage(error));
+      try {
+        await action();
+      } catch (error) {
+        if (mounted.current) {
+          setMessage(errorMessage(error));
 
-        if (saving) {
-          setSaveError(true);
+          if (saving) {
+            setSaveError(true);
+          }
+        }
+      } finally {
+        if (mounted.current) {
+          setBusy(false);
         }
       }
-    } finally {
-      lock.current = false;
-
-      if (mounted.current) {
-        setBusy(false);
-      }
-    }
+    });
   }
 
   async function saveText(content: string) {

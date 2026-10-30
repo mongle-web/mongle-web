@@ -15,6 +15,7 @@ import {
   type PaymentOrder,
 } from '../api/dreamPaymentApi';
 import { confirmPaymentForImage } from '../utils/paymentWorkflow';
+import { runWithRequestLock } from '../utils/requestLock';
 
 interface Props {
   dreamId: number;
@@ -115,7 +116,7 @@ export default function DreamCharge({ dreamId, cost, canGenerate, onContinue, on
   }
 
   async function create(product: CreditProduct) {
-    if (lock.current || pendingRequest || orderId) {
+    if (pendingRequest || orderId) {
       return;
     }
 
@@ -126,58 +127,58 @@ export default function DreamCharge({ dreamId, cost, canGenerate, onContinue, on
       return;
     }
 
-    lock.current = true;
-    setBusy(true);
-    setMessage('');
+    await runWithRequestLock(lock, async () => {
+      setBusy(true);
+      setMessage('');
 
-    try {
-      const requestId = crypto.randomUUID();
-
-      // 응답을 놓친 주문을 자동으로 다시 만들지 않도록 요청 흔적을 남긴다.
-      // 휴대폰 번호와 결제 URL은 저장하지 않는다.
       try {
-        sessionStorage.setItem(
-          key,
-          JSON.stringify({
-            requestId,
-            productId: product.productId,
-          }),
-        );
-      } catch {
-        setMessage('주문 식별자를 안전하게 보관할 수 없어 결제를 시작하지 않았어요.');
-        return;
-      }
+        const requestId = crypto.randomUUID();
 
-      setPendingRequest(true);
-
-      const result = await dreamPaymentApi.create({
-        requestId,
-        productId: product.productId,
-        buyerPhone,
-      });
-
-      chooseOrder(result);
-    } catch (error) {
-      if (axios.isAxiosError(error) && [400, 401, 403].includes(error.response?.status ?? 0)) {
+        // 응답을 놓친 주문을 자동으로 다시 만들지 않도록 요청 흔적을 남긴다.
+        // 휴대폰 번호와 결제 URL은 저장하지 않는다.
         try {
-          sessionStorage.removeItem(key);
+          sessionStorage.setItem(
+            key,
+            JSON.stringify({
+              requestId,
+              productId: product.productId,
+            }),
+          );
         } catch {
-          // 서버가 거절한 요청은 화면에서 다시 선택할 수 있게 한다.
+          setMessage('주문 식별자를 안전하게 보관할 수 없어 결제를 시작하지 않았어요.');
+          return;
         }
 
-        setPendingRequest(false);
-        setMessage(errorMessage(error));
-      } else {
-        setMessage(
-          `${errorMessage(error)} 같은 주문 식별자를 유지하고 아래 주문 내역에서 먼저 확인해 주세요.`,
-        );
+        setPendingRequest(true);
 
-        await history.refetch();
+        const result = await dreamPaymentApi.create({
+          requestId,
+          productId: product.productId,
+          buyerPhone,
+        });
+
+        chooseOrder(result);
+      } catch (error) {
+        if (axios.isAxiosError(error) && [400, 401, 403].includes(error.response?.status ?? 0)) {
+          try {
+            sessionStorage.removeItem(key);
+          } catch {
+            // 서버가 거절한 요청은 화면에서 다시 선택할 수 있게 한다.
+          }
+
+          setPendingRequest(false);
+          setMessage(errorMessage(error));
+        } else {
+          setMessage(
+            `${errorMessage(error)} 같은 주문 식별자를 유지하고 아래 주문 내역에서 먼저 확인해 주세요.`,
+          );
+
+          await history.refetch();
+        }
+      } finally {
+        setBusy(false);
       }
-    } finally {
-      lock.current = false;
-      setBusy(false);
-    }
+    });
   }
 
   function clearTerminalOrder() {
@@ -205,45 +206,45 @@ export default function DreamCharge({ dreamId, cost, canGenerate, onContinue, on
   }
 
   async function continueGeneration() {
-    if (lock.current || !canGenerate || !orderId) {
+    if (!canGenerate || !orderId) {
       return;
     }
 
-    lock.current = true;
-    setBusy(true);
-    setMessage('');
-
-    try {
-      const result = await confirmPaymentForImage(orderId, cost, {
-        order: (id) => dreamPaymentApi.order(id),
-        balance: () => dreamRecordApi.balance(),
-      });
-
-      queryClient.setQueryData(['dream-payments', 'order', orderId], result.order);
-
-      if (result.kind === 'waiting') {
-        throw new Error('결제가 아직 확인되지 않았어요.');
-      }
-
-      queryClient.setQueryData(['dream-record', 'balance'], result.balance);
-
-      if (result.kind === 'insufficient') {
-        throw new Error('토큰 반영을 확인한 뒤 다시 시도해 주세요.');
-      }
+    await runWithRequestLock(lock, async () => {
+      setBusy(true);
+      setMessage('');
 
       try {
-        sessionStorage.removeItem(key);
-      } catch {
-        // 실제 결제 완료 여부와 잔액은 서버에서 이미 확인했다.
-      }
+        const result = await confirmPaymentForImage(orderId, cost, {
+          order: (id) => dreamPaymentApi.order(id),
+          balance: () => dreamRecordApi.balance(),
+        });
 
-      onContinue();
-    } catch (error) {
-      setMessage(errorMessage(error));
-    } finally {
-      lock.current = false;
-      setBusy(false);
-    }
+        queryClient.setQueryData(['dream-payments', 'order', orderId], result.order);
+
+        if (result.kind === 'waiting') {
+          throw new Error('결제가 아직 확인되지 않았어요.');
+        }
+
+        queryClient.setQueryData(['dream-record', 'balance'], result.balance);
+
+        if (result.kind === 'insufficient') {
+          throw new Error('토큰 반영을 확인한 뒤 다시 시도해 주세요.');
+        }
+
+        try {
+          sessionStorage.removeItem(key);
+        } catch {
+          // 실제 결제 완료 여부와 잔액은 서버에서 이미 확인했다.
+        }
+
+        onContinue();
+      } catch (error) {
+        setMessage(errorMessage(error));
+      } finally {
+        setBusy(false);
+      }
+    });
   }
 
   return (
