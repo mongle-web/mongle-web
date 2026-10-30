@@ -24,6 +24,9 @@ export interface DreamDetailUpdate {
   content: string;
 }
 
+// 제목이 아직 없는 꿈(AI 분석 전 등)에 대신 보여줄 문구 (화면 표시용, 저장하지 않음)
+export const UNTITLED_DREAM_TITLE = '제목 없는 꿈';
+
 // 수정 화면 글자 수 제한
 export const DREAM_TITLE_MAX_LENGTH = 20;
 export const DREAM_CONTENT_MAX_LENGTH = 500;

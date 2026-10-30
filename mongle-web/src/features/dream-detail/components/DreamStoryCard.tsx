@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { formatDreamDate } from '@/features/calendar/utils/calendar';
 import AiToggle from '@/features/dream-detail/components/AiToggle';
+import { UNTITLED_DREAM_TITLE } from '@/features/dream-detail/types/dreamDetail';
 import type { DreamDetail } from '@/features/dream-detail/types/dreamDetail';
 
 interface DreamStoryCardProps {
@@ -23,7 +24,7 @@ function DreamStoryCard({ dream }: DreamStoryCardProps) {
       <div className="flex items-end justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
           <h2 className="text-[18px] leading-[1.4] font-semibold break-keep text-b-200">
-            {dream.title}
+            {dream.title || UNTITLED_DREAM_TITLE}
           </h2>
           <p className="text-[12px] leading-[1.5] text-b-400">{formatDreamDate(dream.date)}</p>
         </div>

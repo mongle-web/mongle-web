@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { useRefreshThumbnail } from '@/features/calendar/hooks/useRefreshThumbnail';
 import type { CalendarDay } from '@/features/calendar/types/calendar';
 
 interface CalendarDayCellProps {
@@ -19,6 +20,7 @@ type ImageStatus = 'loading' | 'loaded' | 'error';
 function CalendarDayCell({ day, isSelected = false, onClick }: CalendarDayCellProps) {
   const { date, isCurrentMonth, dream } = day;
   const [imageStatus, setImageStatus] = useState<ImageStatus>('loading');
+  const refreshThumbnail = useRefreshThumbnail();
 
   const dayNumber = date.getDate();
 
@@ -68,7 +70,11 @@ function CalendarDayCell({ day, isSelected = false, onClick }: CalendarDayCellPr
           alt=""
           loading="lazy"
           onLoad={() => setImageStatus('loaded')}
-          onError={() => setImageStatus('error')}
+          onError={() => {
+            setImageStatus('error');
+            // 임시 주소가 만료됐을 수 있어서 한 번만 새 주소를 받아 다시 시도
+            if (dream) void refreshThumbnail(dream);
+          }}
           className={[
             'pointer-events-none absolute inset-0 size-full object-cover transition-opacity duration-300',
             imageStatus === 'loaded' ? 'opacity-100' : 'opacity-0',

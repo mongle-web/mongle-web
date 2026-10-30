@@ -11,6 +11,7 @@ import {
 import DreamStoryCard from '@/features/dream-detail/components/DreamStoryCard';
 import DreamTagSection from '@/features/dream-detail/components/DreamTagSection';
 import { useDreamDetail } from '@/features/dream-detail/hooks/useDreamDetail';
+import { UNTITLED_DREAM_TITLE } from '@/features/dream-detail/types/dreamDetail';
 
 // 꿈 상세 "나의 꿈 기록" (/dreams/:dreamId)
 function DreamDetailPage() {
@@ -60,7 +61,7 @@ function DreamDetailPage() {
           <>
             <DreamDetailImage
               imageUrl={dream.imageUrl}
-              title={dream.title}
+              title={dream.title || UNTITLED_DREAM_TITLE}
               onCreateImage={handleCreateImage}
             />
             <DreamStoryCard dream={dream} />
