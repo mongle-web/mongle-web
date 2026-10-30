@@ -116,7 +116,10 @@ function DreamArchivePage() {
                       <li key={dream.id}>
                         <ArchiveDreamCard
                           dream={dream}
-                          connectedDreamTitles={dream.connectedDreamTitles}
+                          connectedDreams={{
+                            firstTitle: dream.firstDreamTitle,
+                            count: dream.connectedDreamCount,
+                          }}
                           onClick={() => navigate(`/connect/${dream.id}`)}
                           onDelete={() => setDreamToDelete(dream)}
                         />

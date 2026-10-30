@@ -1,27 +1,32 @@
+import { useState } from 'react';
+
 import { useNavigate } from 'react-router-dom';
 
-import { authStorage } from '@/api/authStorage';
 import { BackHeader } from '@/components/common';
 import EditIcon from '@/features/profile/components/EditIcon';
 import ProfileIcon from '@/features/profile/components/ProfileIcon';
 import { LOGIN_PATH, useAuth } from '@/hooks/useAuth';
 
-// TODO: 닉네임 API 연동 시 제거
-const TEMP_NICKNAME = '이름이름';
-
 // 마이페이지 (로그인 상태에 따라 로그아웃 버튼 / 로그인 버튼)
 function ProfilePage() {
   const navigate = useNavigate();
-  const { isLoggedIn } = useAuth();
+  // 닉네임은 로그인(Refresh) · 온보딩 응답의 사용자 정보를 그대로 사용
+  const { isLoggedIn, user, signOut } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogin = () => {
     navigate(LOGIN_PATH);
   };
 
-  // TODO: 로그아웃 API가 생기면 호출 후 처리
-  const handleLogout = () => {
-    authStorage.clear();
-    navigate('/');
+  // 서버 로그아웃 후 로그인 상태 해제 → 홈 (실패해도 이 기기는 로그아웃 처리됨)
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+
+    try {
+      await signOut();
+    } finally {
+      navigate('/');
+    }
   };
 
   return (
@@ -45,9 +50,8 @@ function ProfilePage() {
         </div>
 
         {isLoggedIn ? (
-          // TODO: 닉네임 API 연동 (현재 임시 값)
           <p className="w-[145px] rounded-[16px] bg-n-900 px-5 py-3 text-center text-[14px] leading-[1.5] font-medium text-b-200">
-            {TEMP_NICKNAME}
+            {user?.nickname}
           </p>
         ) : (
           <p className="text-[14px] leading-[1.5] font-medium text-b-400">
@@ -60,6 +64,7 @@ function ProfilePage() {
         <button
           type="button"
           onClick={handleLogout}
+          disabled={isLoggingOut}
           className="absolute inset-x-5 bottom-[42px] flex h-14 cursor-pointer items-center justify-center rounded-[16px] bg-n-900"
         >
           <span className="text-[14px] leading-[1.5] font-medium text-b-600">로그아웃</span>
