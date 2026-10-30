@@ -17,6 +17,7 @@ import { useUpdateDreamDetail } from '@/features/dream-detail/hooks/useUpdateDre
 import {
   DREAM_CONTENT_MAX_LENGTH,
   DREAM_TITLE_MAX_LENGTH,
+  UNTITLED_DREAM_TITLE,
 } from '@/features/dream-detail/types/dreamDetail';
 import type { DreamDetail } from '@/features/dream-detail/types/dreamDetail';
 
@@ -109,7 +110,7 @@ function DreamEditForm({ dream }: DreamEditFormProps) {
         {dream.imageUrl && (
           <DreamDetailImage
             imageUrl={dream.imageUrl}
-            title={dream.title}
+            title={dream.title || UNTITLED_DREAM_TITLE}
             onCreateImage={() => {}}
           />
         )}

@@ -4,6 +4,7 @@ import {
   deleteWorldMock,
   getWorldListMock,
 } from '@/features/dream-connect/mocks/dreamConnectMockData';
+import { UNTITLED_DREAM_TITLE } from '@/features/dream-detail/types/dreamDetail';
 import type {
   ArchiveDream,
   ConnectedDream,
@@ -59,7 +60,7 @@ export const getArchiveDreams = async (): Promise<RecordedDream[]> => {
       ...items.map(({ dreamId, dreamedAt, title, displayKeywords, revision }) => ({
         id: dreamId,
         date: dreamedAt,
-        title: title ?? '',
+        title: title || UNTITLED_DREAM_TITLE,
         keywords: displayKeywords,
         revision,
       })),
