@@ -1,6 +1,6 @@
 import { useSearchParams } from 'react-router-dom';
 
-import { KAKAO_LOGIN_URL } from '@/api/authApi';
+import { startKakaoLogin } from '@/api/authApi';
 import kakaoLogo from '@/assets/images/login/KakaoLogo.svg';
 import mongleImage from '@/assets/images/login/MongleImage.png';
 import ErrorIcon from '@/features/login/components/ErrorIcon';
@@ -28,7 +28,7 @@ function LoginPage() {
   // 카카오 로그인은 백엔드가 처리 → 브라우저 주소를 이동 (axios로 부르지 않음)
   // 신규 회원은 닉네임 페이지, 기존 회원은 홈으로 가는 분기는 콜백 페이지(/auth/callback)에서 처리
   const handleKakaoLogin = () => {
-    window.location.href = KAKAO_LOGIN_URL;
+    startKakaoLogin();
   };
 
   return (

@@ -12,6 +12,45 @@ const authClient = axios.create({
 // 카카오 로그인 시작 주소 (axios로 부르지 않고 브라우저 주소를 이 주소로 이동)
 export const KAKAO_LOGIN_URL = `${import.meta.env.VITE_API_BASE_URL}/oauth2/authorization/kakao`;
 
+// ─────────────────────────────────────────────
+// 개발용 가짜 로그인 (로컬에서 백엔드 없이 화면 흐름 확인용)
+// .env.local 에 VITE_AUTH_MOCK=true 를 넣고 개발 서버(pnpm run dev)에서만 동작 (배포 빌드에서는 항상 꺼짐)
+// 상태: 없음(로그아웃) → 카카오 버튼 시 'new'(신규 회원) → 닉네임 온보딩 후 'member'(기존 회원)
+// 기존 회원으로 바로 보려면 콘솔: localStorage.setItem('mongle:mock-auth', 'member')
+// ─────────────────────────────────────────────
+export const IS_AUTH_MOCK = import.meta.env.DEV && import.meta.env.VITE_AUTH_MOCK === 'true';
+const MOCK_AUTH_KEY = 'mongle:mock-auth';
+type MockAuthState = 'new' | 'member';
+
+const getMockState = () => localStorage.getItem(MOCK_AUTH_KEY) as MockAuthState | null;
+export const setMockAuthState = (state: MockAuthState | null) => {
+  if (state) localStorage.setItem(MOCK_AUTH_KEY, state);
+  else localStorage.removeItem(MOCK_AUTH_KEY);
+};
+
+const createMockSession = (state: MockAuthState): Session => ({
+  accessToken: 'mock-access-token',
+  tokenType: 'Bearer',
+  expiresIn: 3600,
+  user: {
+    userId: 1,
+    email: 'mock@mongle.art',
+    nickname: state === 'member' ? '몽글이' : null,
+    onboardingCompleted: state === 'member',
+  },
+});
+
+// 카카오 로그인 시작 (mock이면 백엔드 대신 바로 로그인 완료 페이지로)
+export const startKakaoLogin = () => {
+  if (IS_AUTH_MOCK) {
+    if (getMockState() !== 'member') setMockAuthState('new');
+    window.location.href = '/auth/callback';
+    return;
+  }
+
+  window.location.href = KAKAO_LOGIN_URL;
+};
+
 interface ApiResponse<T> {
   success: boolean;
   code: string;
@@ -52,6 +91,13 @@ let refreshing: Promise<Session> | undefined;
 export const refreshSession = (): Promise<Session> => {
   if (refreshing) return refreshing;
 
+  if (IS_AUTH_MOCK) {
+    const state = getMockState();
+    return state
+      ? Promise.resolve(createMockSession(state))
+      : Promise.reject(new Error('로그인 필요'));
+  }
+
   refreshing = (async () => {
     const csrf = await getCsrfToken();
     const response = await authClient.post<ApiResponse<Session>>('/api/v1/auth/refresh', null, {
@@ -67,6 +113,11 @@ export const refreshSession = (): Promise<Session> => {
 
 // 로그아웃 (현재 기기의 Refresh 쿠키 삭제, 다른 기기 로그인은 유지)
 export const logout = async (): Promise<void> => {
+  if (IS_AUTH_MOCK) {
+    setMockAuthState(null);
+    return;
+  }
+
   const csrf = await getCsrfToken();
   await authClient.post('/api/v1/auth/logout', null, {
     headers: { [csrf.headerName]: csrf.token },
