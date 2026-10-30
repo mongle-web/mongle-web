@@ -200,6 +200,18 @@ export const useConnectDreams = (onCompleted: (worldId: number) => void) => {
       if (run.isCancelled) return;
       runRef.current = null;
       setStatus('error');
+
+      // 새로 만든 폴더인데 연결이 완성되지 못했으면 빈 폴더가 서버에 남지 않게 삭제
+      // (꿈 추가 · 다시 연결 중 실패는 기존 연결 결과를 지키기 위해 지우지 않음)
+      if (
+        run.isNewWorld &&
+        !run.isCompositionDone &&
+        run.worldId !== undefined &&
+        run.revision !== undefined
+      ) {
+        // 실패해도 화면에는 이미 실패 모달이 떠 있으니 조용히 넘어감
+        deleteWorld(run.worldId, run.revision).catch(() => {});
+      }
     }
   };
 
