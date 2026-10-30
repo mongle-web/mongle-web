@@ -223,7 +223,7 @@ function DreamRecordFlow() {
             <p className="mt-3 text-[14px] leading-[1.5] text-b-600">
               꿈에서 느꼈던 순간의 감정을 떠올려보고
               <br />
-              가장 가까운 감정을 1~3개 선택해 주세요.
+              가장 가까운 감정을 1~2개 선택해 주세요.
             </p>
 
             <EmotionSelector
@@ -404,7 +404,13 @@ function DreamRecordFlow() {
             </SecondaryButton>
 
             <PrimaryButton
-              disabled={!draft.emotions.length || busy || !ready || flow.saveError}
+              disabled={
+                !draft.emotions.length ||
+                draft.emotions.length > 2 ||
+                busy ||
+                !ready ||
+                flow.saveError
+              }
               onClick={flow.handleNext}
             >
               다음

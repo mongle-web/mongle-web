@@ -1,7 +1,7 @@
 
 import axios from 'axios';
 import { apiClient } from '@/api/client';
-import type { Emotion } from '../utils/dreamDraft';
+import { MAX_EMOTIONS, type Emotion } from '../utils/dreamDraft';
 
 export const emotionCodes = {
   행복: 'HAPPY',
@@ -283,17 +283,20 @@ export const dreamRecordApi = {
       },
     ),
 
-  complete: (dream: Dream, emotions: Emotion[]) =>
-    request<Dream>(
+  complete: (dream: Dream, emotions: Emotion[]) => {
+    if (emotions.length > MAX_EMOTIONS) {
+      throw new RecordApiError('EMOTIONS_LIMIT', `감정은 최대 ${MAX_EMOTIONS}개까지 선택할 수 있어요.`);
+    }
+
+    return request<Dream>(
       'put',
       `/api/v1/dreams/${dream.dreamId}/emotions`,
       {
         revision: dream.revision,
-        emotions: emotions.map(
-          (emotion) => emotionCodes[emotion],
-        ),
+        emotions: emotions.map((emotion) => emotionCodes[emotion]),
       },
-    ),
+    );
+  },
 
   generation: (id: number, signal?: AbortSignal) =>
     request<Generation>(

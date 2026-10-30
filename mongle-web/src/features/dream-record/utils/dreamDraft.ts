@@ -5,7 +5,19 @@ export type Emotion = (typeof EMOTIONS)[number];
 export type RecordStep = 'text' | 'emotion' | 'image' | 'complete';
 
 export const MAX_LENGTH = 500;
-export const MAX_EMOTIONS = 3;
+export const MAX_EMOTIONS = 2;
+
+export function toggleEmotionSelection(current: Emotion[], emotion: Emotion) {
+  if (current.includes(emotion)) {
+    return { emotions: current.filter((item) => item !== emotion), limitReached: false };
+  }
+
+  if (current.length >= MAX_EMOTIONS) {
+    return { emotions: current, limitReached: true };
+  }
+
+  return { emotions: [...current, emotion], limitReached: false };
+}
 
 const LEGACY_KEY = 'mongle:dream-record-draft';
 

@@ -17,6 +17,7 @@ import {
   MAX_EMOTIONS,
   parseRecordDate,
   toDateString,
+  toggleEmotionSelection,
   type DreamDraft,
   type Emotion,
 } from '../utils/dreamDraft';
@@ -369,20 +370,13 @@ export function useDreamRecord() {
       return;
     }
 
-    if (
-      !draft.emotions.includes(emotion) &&
-      draft.emotions.length >= MAX_EMOTIONS
-    ) {
+    const selection = toggleEmotionSelection(draft.emotions, emotion);
+    if (selection.limitReached) {
       setMessage(`감정은 최대 ${MAX_EMOTIONS}개까지 선택할 수 있어요.`);
       return;
     }
 
-    setDraft((current) => ({
-      ...current,
-      emotions: current.emotions.includes(emotion)
-        ? current.emotions.filter((item) => item !== emotion)
-        : [...current.emotions, emotion],
-    }));
+    setDraft((current) => ({ ...current, emotions: selection.emotions }));
 
     setMessage('');
   }
@@ -406,7 +400,8 @@ export function useDreamRecord() {
         }
       } else if (
         baseScreen === 'emotion' &&
-        draft.emotions.length
+        draft.emotions.length > 0 &&
+        draft.emotions.length <= MAX_EMOTIONS
       ) {
         const saved = recordRef.current;
 
