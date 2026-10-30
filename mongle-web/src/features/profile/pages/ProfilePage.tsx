@@ -47,10 +47,11 @@ function ProfilePage() {
         <div className="relative size-[90px]">
           <ProfileIcon className="size-[90px]" />
 
-          {/* TODO: 누르면 편집 동작되게 */}
+          {/* 편집 배지 → 닉네임 수정 */}
           {isLoggedIn && (
             <button
               type="button"
+              onClick={() => navigate('/profile/nickname')}
               aria-label="프로필 편집"
               className="absolute right-[-4px] bottom-0 flex size-8 cursor-pointer items-center justify-center rounded-full bg-n-300"
             >

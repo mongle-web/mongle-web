@@ -16,6 +16,7 @@ import AuthCallbackPage from '@/features/login/pages/AuthCallbackPage';
 import LoginPage from '@/features/login/pages/LoginPage';
 import NicknamePage from '@/features/login/pages/NicknamePage';
 import WelcomePage from '@/features/login/pages/WelcomePage';
+import NicknameEditPage from '@/features/profile/pages/NicknameEditPage';
 import ProfilePage from '@/features/profile/pages/ProfilePage';
 
 function AppRouter() {
@@ -39,6 +40,7 @@ function AppRouter() {
           <Route path="/signup/nickname" element={<NicknamePage />} />
           <Route path="/signup/welcome" element={<WelcomePage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/profile/nickname" element={<NicknameEditPage />} />
         </Routes>
       </AppLayout>
     </BrowserRouter>
