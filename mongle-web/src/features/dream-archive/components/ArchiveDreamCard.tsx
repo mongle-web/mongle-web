@@ -6,7 +6,7 @@ import type { ArchiveDream } from '@/features/dream-archive/types/dreamArchive';
 
 interface ArchiveDreamCardProps {
   dream: ArchiveDream;
-  connectedDreamTitles?: string[]; // "연결된 꿈" 카드일 때만
+  connectedDreams?: { firstTitle: string; count: number }; // "연결된 꿈" 카드일 때만 (첫 꿈 제목 · 연결한 꿈 수)
   onClick?: () => void;
   onDelete: () => void;
 }
@@ -15,14 +15,7 @@ interface ArchiveDreamCardProps {
 // 피그마: 배경 N-900, 모서리 24, 여백 20, 제목 16 SemiBold(줄간격 1.3) · 날짜 12, 휴지통 18
 // 키워드 태그 12 B-400, 배경 N-800, 모서리 8, 여백 가로 8 · 세로 4, 태그 사이 4
 // "연결된 꿈" 카드: 제목 아래 8px에 "첫 꿈 제목 외 N개의 꿈을 연결했어요" (14)
-function ArchiveDreamCard({
-  dream,
-  connectedDreamTitles,
-  onClick,
-  onDelete,
-}: ArchiveDreamCardProps) {
-  const [firstTitle, ...restTitles] = connectedDreamTitles ?? [];
-
+function ArchiveDreamCard({ dream, connectedDreams, onClick, onDelete }: ArchiveDreamCardProps) {
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === 'Enter') onClick?.();
   };
@@ -62,10 +55,10 @@ function ArchiveDreamCard({
           </button>
         </div>
 
-        {firstTitle && (
+        {connectedDreams && (
           <p className="text-[14px] leading-[1.5] font-medium break-keep text-b-400">
-            <span className="font-semibold text-b-300">{firstTitle}</span>
-            {` 외 ${restTitles.length}개의 꿈을 연결했어요`}
+            <span className="font-semibold text-b-300">{connectedDreams.firstTitle}</span>
+            {` 외 ${connectedDreams.count - 1}개의 꿈을 연결했어요`}
           </p>
         )}
       </div>

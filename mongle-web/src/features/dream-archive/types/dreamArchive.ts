@@ -11,7 +11,9 @@ export interface ArchiveDream {
 }
 
 // 보관함 "연결된 꿈" 카드 정보
-// 여러 지난 꿈을 이어서 만든 이야기 1개
+// 여러 지난 꿈을 이어서 만든 이야기(세계관) 1개
+// 카드 문구: "{firstDreamTitle} 외 {connectedDreamCount - 1}개의 꿈을 연결했어요"
 export interface ConnectedDream extends ArchiveDream {
-  connectedDreamTitles: string[]; // 연결에 사용한 꿈 제목들 (첫 번째 제목 + "외 N개"로 표시)
+  firstDreamTitle: string; // 연결한 꿈 중 가장 오래된 꿈 제목
+  connectedDreamCount: number; // 연결한 꿈 수
 }
