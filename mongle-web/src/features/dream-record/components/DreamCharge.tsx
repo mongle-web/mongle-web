@@ -132,13 +132,18 @@ export default function DreamCharge({ dreamId, cost, canGenerate, onContinue, on
 
       // 응답을 놓친 주문을 자동으로 다시 만들지 않도록 요청 흔적을 남긴다.
       // 휴대폰 번호와 결제 URL은 저장하지 않는다.
-      sessionStorage.setItem(
-        key,
-        JSON.stringify({
-          requestId,
-          productId: product.productId,
-        }),
-      );
+      try {
+        sessionStorage.setItem(
+          key,
+          JSON.stringify({
+            requestId,
+            productId: product.productId,
+          }),
+        );
+      } catch {
+        setMessage('주문 식별자를 안전하게 보관할 수 없어 결제를 시작하지 않았어요.');
+        return;
+      }
 
       setPendingRequest(true);
 
@@ -150,7 +155,7 @@ export default function DreamCharge({ dreamId, cost, canGenerate, onContinue, on
 
       chooseOrder(result);
     } catch (error) {
-      if (axios.isAxiosError(error) && [400, 401, 403, 409].includes(error.response?.status ?? 0)) {
+      if (axios.isAxiosError(error) && [400, 401, 403].includes(error.response?.status ?? 0)) {
         try {
           sessionStorage.removeItem(key);
         } catch {
@@ -161,7 +166,7 @@ export default function DreamCharge({ dreamId, cost, canGenerate, onContinue, on
         setMessage(errorMessage(error));
       } else {
         setMessage(
-          `${errorMessage(error)} 주문이 접수됐을 수 있으니 아래 주문 내역에서 먼저 확인해 주세요.`,
+          `${errorMessage(error)} 같은 주문 식별자를 유지하고 아래 주문 내역에서 먼저 확인해 주세요.`,
         );
 
         await history.refetch();
@@ -238,15 +243,15 @@ export default function DreamCharge({ dreamId, cost, canGenerate, onContinue, on
   }
 
   return (
-    <section className="flex flex-col gap-5">
-      <div className="flex items-center justify-between rounded-2xl bg-n-900 p-5">
-        <span>보유 토큰</span>
-        <strong>{balance.data?.available ?? '—'}개</strong>
+    <section className="flex flex-col gap-4">
+      <div className="flex h-[52px] items-center justify-between rounded-2xl bg-n-900 px-5">
+        <span className="text-[14px] text-b-600">보유 토큰</span>
+        <strong className="text-[14px] font-semibold">{balance.data?.available ?? '—'}개</strong>
       </div>
 
       {!orderId && !pendingRequest && (
         <>
-          <label className="text-sm">
+          <label className="text-[14px] text-b-400">
             결제용 휴대폰 번호
             <input
               aria-label="결제용 휴대폰 번호"
@@ -256,7 +261,7 @@ export default function DreamCharge({ dreamId, cost, canGenerate, onContinue, on
               onChange={(event) => setPhone(event.target.value)}
               disabled={busy}
               placeholder="01012345678"
-              className="mt-2 w-full rounded-xl bg-n-900 p-4"
+              className="mt-2 h-[52px] w-full rounded-2xl border-0 bg-n-900 px-5 text-b-200 outline-none placeholder:text-b-600 focus:ring-2 focus:ring-p-300"
             />
           </label>
 
@@ -264,27 +269,30 @@ export default function DreamCharge({ dreamId, cost, canGenerate, onContinue, on
 
           {products.data?.length === 0 && <p>현재 구매할 수 있는 충전 상품이 없어요.</p>}
 
-          {products.data?.map((product) => (
-            <div
-              key={product.productId}
-              className="flex items-center justify-between gap-4 rounded-2xl bg-n-900 p-4"
-            >
-              <div>
-                <p>{product.name}</p>
-                <p className="mt-1 text-sm text-b-400">{product.credits} 토큰</p>
-              </div>
+          {!!products.data?.length && (
+            <div className="flex flex-col rounded-2xl bg-n-900 px-5 py-2">
+              {products.data.map((product) => (
+                <div
+                  key={product.productId}
+                  className="flex min-h-[58px] items-center justify-between gap-4"
+                >
+                  <p className="text-[14px] font-medium" title={product.name}>
+                    {product.credits} 토큰
+                  </p>
 
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void create(product)}
-                className="rounded-full bg-p-500 px-5 py-3 font-semibold disabled:opacity-40"
-              >
-                {product.price.toLocaleString('ko-KR')}{' '}
-                {product.currency === 'KRW' ? '원' : product.currency}
-              </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void create(product)}
+                    className="h-9 min-w-[100px] rounded-full bg-p-500 px-5 text-[14px] font-semibold disabled:opacity-40"
+                  >
+                    {product.price.toLocaleString('ko-KR')}
+                    {product.currency === 'KRW' ? '원' : ` ${product.currency}`}
+                  </button>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </>
       )}
 
@@ -299,7 +307,7 @@ export default function DreamCharge({ dreamId, cost, canGenerate, onContinue, on
               key={item.orderId}
               type="button"
               onClick={() => chooseOrder(item)}
-              className="rounded-xl bg-n-900 p-4 text-left"
+              className="rounded-2xl bg-n-900 p-4 text-left"
             >
               <span className="block">
                 {item.productName} · {item.price.toLocaleString('ko-KR')}원
@@ -345,7 +353,7 @@ export default function DreamCharge({ dreamId, cost, canGenerate, onContinue, on
                     href={url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-5 block rounded-xl bg-p-500 p-4 text-center font-semibold"
+                    className="mt-5 block h-11 rounded-xl bg-p-500 px-4 py-3 text-center text-[14px] font-semibold"
                   >
                     결제창 열기
                   </a>

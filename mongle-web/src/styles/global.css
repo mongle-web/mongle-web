@@ -131,3 +131,232 @@ img {
 #root {
   min-height: 100vh;
 }
+
+
+/* =========================================
+   MONGLE DREAM RECORD UI
+   ========================================= */
+
+/* 전체 배경 */
+.mongle-record-page {
+  background: #1e1d27;
+  color: #ededf0;
+}
+
+/* 콘텐츠 너비 */
+.mongle-record-main {
+  width: 100%;
+  max-width: 520px;
+  margin-inline: auto;
+}
+
+.mongle-record-main h1 {
+  letter-spacing: -0.035em;
+}
+
+.mongle-record-main > p {
+  color: #85848d;
+}
+
+/* 꿈 기록 입력창 */
+.mongle-dream-input {
+  border: 1px solid rgba(206, 204, 226, 0.045);
+  background: #292834;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.mongle-dream-textarea {
+  color: #ededf0;
+  caret-color: #9a8cff;
+}
+
+.mongle-dream-textarea::placeholder {
+  color: #73717d;
+}
+
+.mongle-dream-textarea:focus {
+  outline: none;
+}
+
+/* 하단 버튼 영역 */
+.mongle-record-footer {
+  width: 100%;
+  max-width: 520px;
+  margin-inline: auto;
+
+  background: linear-gradient(
+    180deg,
+    rgba(30, 29, 39, 0.94),
+    #1e1d27 28%
+  );
+
+  padding-top: 18px;
+}
+
+/* 공통 메인 버튼 */
+.mongle-record-footer > button,
+.mongle-record-footer > div > button {
+  min-height: 56px;
+
+  border: 2px solid rgba(255, 255, 255, 0.4) !important;
+  border-radius: 16px;
+
+  background: #7a6ce3;
+  box-shadow: 0 0 14px rgba(122, 108, 227, 0.24);
+
+  color: #fff;
+  font-weight: 600;
+}
+
+/* 비활성 버튼 */
+.mongle-record-footer button:disabled {
+  background: #cecce2 !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  box-shadow: none;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* =========================================
+   화풍 선택 카드
+   ========================================= */
+
+.mongle-style-grid {
+  padding-bottom: 12px;
+}
+
+.mongle-style-card {
+  isolation: isolate;
+  background: #292834;
+
+  border: 1px solid rgba(255, 255, 255, 0.035);
+
+  transform: translateZ(0);
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    filter 0.2s ease;
+}
+
+/* 클릭 효과 */
+.mongle-style-card:active {
+  transform: scale(0.985);
+}
+
+/* 화풍 이미지 */
+.mongle-style-image {
+  z-index: -2;
+
+  transition:
+    transform 0.35s ease,
+    filter 0.25s ease;
+}
+
+/* 기본 어두운 오버레이 */
+.mongle-style-shade {
+  z-index: -1;
+
+  background: linear-gradient(
+    180deg,
+    rgba(12, 11, 18, 0.30) 0%,
+    rgba(12, 11, 18, 0.10) 48%,
+    rgba(12, 11, 18, 0.74) 100%
+  );
+
+  transition: background 0.2s ease;
+}
+
+/* 선택된 카드 오버레이 */
+.mongle-style-shade.is-selected {
+  background: linear-gradient(
+    180deg,
+    rgba(12, 11, 18, 0.04) 0%,
+    rgba(12, 11, 18, 0) 56%,
+    rgba(12, 11, 18, 0.56) 100%
+  );
+}
+
+/* 선택되지 않은 이미지 */
+.mongle-style-card:not(.is-selected)
+.mongle-style-image {
+  filter: brightness(0.68) saturate(0.86);
+}
+
+/* 선택된 카드 */
+.mongle-style-card.is-selected {
+  border: 1px solid rgba(211, 204, 255, 0.78);
+
+  box-shadow:
+    0 0 0 1px rgba(159, 143, 255, 0.20),
+    0 0 18px rgba(181, 166, 255, 0.44),
+    0 0 34px rgba(122, 108, 227, 0.22);
+}
+
+/* 선택된 이미지 */
+.mongle-style-card.is-selected
+.mongle-style-image {
+  filter: brightness(1.04) saturate(1.04);
+  transform: scale(1.025);
+}
+
+/* 화풍 이름 */
+.mongle-style-label {
+  color: #fff;
+  background: rgba(20, 19, 27, 0.20);
+  text-shadow: 0 1px 5px rgba(0, 0, 0, 0.5);
+}
+
+/* 사용 불가능한 화풍 */
+.mongle-style-card.is-unavailable {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+/* =========================================
+   토큰 충전
+   ========================================= */
+
+.mongle-charge {
+  gap: 14px;
+}
+
+.mongle-charge > div:first-child {
+  border: 1px solid rgba(206, 204, 226, 0.07);
+  background: #292834;
+}
+
+.mongle-charge input {
+  border: 1px solid rgba(206, 204, 226, 0.08);
+  background: #292834;
+}
+
+.mongle-charge input:focus {
+  border-color: #9b8cff;
+}
+
+.mongle-charge > div:has(> div > button) {
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid rgba(206, 204, 226, 0.07);
+  background: #292834;
+}
+
+.mongle-charge a {
+  border-radius: 14px;
+  background: #7a6ce3;
+  box-shadow: 0 0 14px rgba(122, 108, 227, 0.22);
+}
+
+/* 작은 화면 */
+@media (max-width: 380px) {
+  .mongle-style-grid {
+    gap: 12px;
+  }
+
+  .mongle-style-card {
+    height: 218px;
+    border-radius: 21px;
+  }
+}
