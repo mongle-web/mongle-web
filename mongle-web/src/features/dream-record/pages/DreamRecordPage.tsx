@@ -83,7 +83,16 @@ function DreamRecordFlow() {
     setViewOverride(nextView);
 
     if (dreamId) {
-      writeImageIntent({ dreamId, style: nextStyle, view: nextView });
+      const existing = readImageIntent(dreamId);
+      writeImageIntent({
+        dreamId,
+        style: nextStyle,
+        view: nextView,
+        ...(existing?.action ? { action: existing.action } : {}),
+        ...(existing?.imageVersion !== undefined
+          ? { imageVersion: existing.imageVersion }
+          : {}),
+      });
     }
   }
 

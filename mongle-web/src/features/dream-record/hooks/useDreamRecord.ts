@@ -20,7 +20,7 @@ import {
   type DreamDraft,
   type Emotion,
 } from '../utils/dreamDraft';
-import { readImageIntent } from '../utils/imageIntent';
+import { readImageIntent, writeImageIntent } from '../utils/imageIntent';
 
 type Screen = 'text' | 'emotion' | 'image' | 'complete';
 
@@ -544,6 +544,16 @@ export function useDreamRecord() {
         ? existing?.nextRegenerationCost
         : INITIAL_DREAM_IMAGE_COST;
 
+      writeImageIntent({
+        dreamId: id,
+        style: selectedStyle,
+        view: 'offer',
+        action: needsRegeneration ? 'regenerate' : 'create',
+        ...(needsRegeneration && existing?.imageVersion !== undefined
+          ? { imageVersion: existing.imageVersion }
+          : {}),
+      });
+
       if (required == null) {
         throw new Error(
           '재생성 비용을 확인할 수 없어요. 잠시 후 다시 조회해 주세요.',
@@ -591,6 +601,15 @@ export function useDreamRecord() {
 
         // 실제 잔액 부족일 때만 충전 화면을 표시한다.
         if (code === 'CREDIT_409_1') {
+          writeImageIntent({
+            dreamId: id,
+            style: selectedStyle,
+            view: 'offer',
+            action: needsRegeneration ? 'regenerate' : 'create',
+            ...(needsRegeneration && existing?.imageVersion !== undefined
+              ? { imageVersion: existing.imageVersion }
+              : {}),
+          });
           setModal('tokens');
         }
 

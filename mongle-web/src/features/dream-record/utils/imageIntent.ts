@@ -4,6 +4,8 @@ export interface DreamImageIntent {
   dreamId: number;
   style: string;
   view: DreamImageView;
+  action?: 'create' | 'regenerate';
+  imageVersion?: number;
 }
 
 const KEY_PREFIX = 'mongle:dream-image-intent:';
@@ -26,7 +28,9 @@ export function readImageIntent(dreamId: number): DreamImageIntent | null {
       parsed.dreamId !== dreamId ||
       typeof parsed.style !== 'string' ||
       parsed.style.length > 50 ||
-      !['style', 'offer', 'charge'].includes(parsed.view ?? '')
+      !['style', 'offer', 'charge'].includes(parsed.view ?? '') ||
+      (parsed.action !== undefined && !['create', 'regenerate'].includes(parsed.action)) ||
+      (parsed.imageVersion !== undefined && (!Number.isInteger(parsed.imageVersion) || parsed.imageVersion < 0))
     ) {
       return null;
     }
