@@ -5,8 +5,8 @@ import { LOGIN_PATH } from '@/hooks/useAuth';
 const DREAM_ANALYSIS_PATH = '/dreams/analysis';
 
 interface DreamAnalyzeCardProps {
-  // 이번 달 가장 많이 나온 감정 키워드 (예: '불안')
-  keyword: string;
+  // 이번 달 가장 많이 나온 감정 키워드 (예: '불안'), 없으면 null
+  keyword: string | null;
   isLoggedIn: boolean;
 }
 
@@ -43,7 +43,7 @@ function DreamAnalyzeCard({ keyword, isLoggedIn }: DreamAnalyzeCardProps) {
       {/* 감정 키워드 말풍선 */}
       <div className="relative flex w-full items-center gap-2.5 rounded-full bg-n-800 px-3 py-1.5">
         <p className="relative z-10 text-[14px] leading-[1.5] font-medium text-b-400">
-          {isLoggedIn ? (
+          {isLoggedIn && keyword ? (
             <>
               이번달에는 <span className="font-semibold text-p-300">‘{keyword}’</span> 감정 키워드가
               많이 나왔어요.

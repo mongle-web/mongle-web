@@ -1,7 +1,8 @@
 import type { EmotionStat } from '@/features/dream-analysis/components/EmotionSection';
 import type { KeywordStat } from '@/features/dream-analysis/components/KeywordSection';
 
-// TODO: API 연동 시 제거
+// 꿈 분석 화면 예시 데이터 (현재 화면 · API에 연결되어 있지 않음)
+// 데이터가 꽉 찬 화면(키워드 배치 · 감정 막대 · 해석 본문)을 확인할 때 섹션 props로 넣어 사용
 
 // 자주 나타난 키워드
 export const mockKeywords: KeywordStat[] = [

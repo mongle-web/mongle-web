@@ -4,12 +4,18 @@ import BottomNavigation from '@/features/home/components/BottomNavigation';
 import DreamAnalyzeCard from '@/features/home/components/DreamAnalyzeCard';
 import HomeHeroCard from '@/features/home/components/HomeHeroCard';
 import HomeMenuCard from '@/features/home/components/HomeMenuCard';
+import { useMonthlyAnalysis } from '@/features/dream-analysis/hooks/useMonthlyAnalysis';
 import { useAuth } from '@/hooks/useAuth';
 // import RecentDreamCard from '@/features/home/components/RecentDreamCard';
 // import { recentDreams } from '@/features/home/mocks/homeMockData';
 
 function HomePage() {
   const { isLoggedIn } = useAuth();
+
+  // 꿈 분석 카드 말풍선: 이번 달 가장 많이 고른 감정 (로그인했을 때만 조회)
+  const monthly = useMonthlyAnalysis(isLoggedIn);
+  const topEmotion =
+    [...(monthly.data?.emotions ?? [])].sort((a, b) => b.count - a.count)[0]?.emotion ?? null;
 
   return (
     <>
@@ -33,8 +39,7 @@ function HomePage() {
         </div>
 
         <section className="mt-5 flex flex-col gap-2">
-          {/* TODO: 임시 키워드 */}
-          <DreamAnalyzeCard keyword="불안" isLoggedIn={isLoggedIn} />
+          <DreamAnalyzeCard keyword={topEmotion} isLoggedIn={isLoggedIn} />
 
           {/* 피그마: 카드 사이 8px */}
           <div className="grid grid-cols-2 gap-2">

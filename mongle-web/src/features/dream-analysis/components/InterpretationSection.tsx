@@ -1,10 +1,12 @@
 interface InterpretationSectionProps {
   // 해석 본문 (문단 사이 빈 줄은 그대로 줄바꿈으로 표시)
   interpretation: string;
+  // 해석 본문이 아닌 안내 문구 (생성 중 · 해석할 꿈 없음)면 가운데 정렬 + 위아래 여백
+  isMessage?: boolean;
 }
 
 // 몽글의 꿈 해석
-function InterpretationSection({ interpretation }: InterpretationSectionProps) {
+function InterpretationSection({ interpretation, isMessage = false }: InterpretationSectionProps) {
   return (
     <section className="flex w-full flex-col gap-3">
       <h2 className="flex items-center gap-2 text-[16px] leading-[1.5] font-medium text-b-200">
@@ -19,7 +21,9 @@ function InterpretationSection({ interpretation }: InterpretationSectionProps) {
         몽글의 꿈 해석
       </h2>
 
-      <p className="text-[14px] leading-[1.5] font-normal whitespace-pre-line text-b-400">
+      <p
+        className={`text-[14px] leading-[1.5] font-normal whitespace-pre-line text-b-400 ${isMessage ? 'py-10 text-center' : ''}`}
+      >
         {interpretation}
       </p>
     </section>
