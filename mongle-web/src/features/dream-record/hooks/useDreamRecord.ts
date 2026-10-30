@@ -62,6 +62,7 @@ export function useDreamRecord() {
   const [restoreVersion, setRestoreVersion] = useState(0);
 
   const [modal, setModal] = useState<'tokens' | null>(null);
+  const [tokenRequirement, setTokenRequirement] = useState<number | null>(null);
   const [style, setStyle] = useState('');
   const [waitingImage, setWaitingImage] = useState(false);
 
@@ -506,6 +507,7 @@ export function useDreamRecord() {
       }
 
       try {
+        setTokenRequirement(null);
         const result = await runImageWorkflow({
           fetchImage: () => api.image(id),
           fetchBalance: () => api.balance(),
@@ -532,6 +534,7 @@ export function useDreamRecord() {
         }
 
         if (result.kind === 'insufficient') {
+          setTokenRequirement(result.cost);
           const needsRegeneration =
             result.image?.status === 'COMPLETED' || result.image?.hasPreviousResult === true;
 
@@ -593,6 +596,7 @@ export function useDreamRecord() {
     message: message || (queryError ? errorMessage(queryError) : ''),
     saveError,
     modal,
+    tokenRequirement,
     setModal,
     setMessage,
     tokens,

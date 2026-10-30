@@ -536,7 +536,7 @@ function DreamRecordFlow() {
 
       {flow.modal === 'tokens' && (
         <DreamTokenShortageModal
-          required={cost ?? INITIAL_DREAM_IMAGE_COST}
+          required={flow.tokenRequirement ?? cost ?? INITIAL_DREAM_IMAGE_COST}
           available={tokens}
           onClose={() => {
             flow.setModal(null);
