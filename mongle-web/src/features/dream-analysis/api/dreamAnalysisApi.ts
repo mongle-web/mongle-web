@@ -1,19 +1,11 @@
-import { IS_AUTH_MOCK } from '@/api/authApi';
 import type { ApiResponse } from '@/api/authApi';
 import { apiClient } from '@/api/client';
 import type { EmotionStat } from '@/features/dream-analysis/components/EmotionSection';
 import type { KeywordStat } from '@/features/dream-analysis/components/KeywordSection';
-import {
-  mockEmotions,
-  mockInterpretation,
-  mockKeywords,
-} from '@/features/dream-analysis/mocks/dreamAnalysisMock';
 import { emotionCodes } from '@/features/dream-record/api/dreamRecordApi';
 import type { EmotionCode } from '@/features/dream-record/api/dreamRecordApi';
 
 // 꿈 분석 기록 API (월별 키워드 · 감정 통계, 몽글의 종합 해석)
-// mock 로그인(VITE_AUTH_MOCK)이고 개발 토큰이 없으면 서버 대신 mock 데이터로 응답
-const USE_MOCK = IS_AUTH_MOCK && !import.meta.env.VITE_DEV_ACCESS_TOKEN;
 
 // ─────────────────────────────────────────────
 // 서버 응답 형태
@@ -64,26 +56,9 @@ const toMonthlyAnalysis = (data: MonthlyResponse): MonthlyAnalysis => ({
   })),
 });
 
-const MOCK_INTERPRETATION: Interpretation = {
-  status: 'COMPLETED',
-  failureCode: null,
-  interpretation: mockInterpretation,
-  refreshNeeded: false,
-  limitedEvidence: false,
-};
-
 // 월별 꿈 요소(키워드) · 선택 감정 통계
 // month: 'YYYY-MM' (생략하면 서버 기본 월)
 export const getMonthlyAnalysis = async (month?: string): Promise<MonthlyAnalysis> => {
-  if (USE_MOCK) {
-    return {
-      month: month ?? '',
-      analyzedDreamCount: 0,
-      keywords: mockKeywords,
-      emotions: mockEmotions,
-    };
-  }
-
   const response = await apiClient.get<ApiResponse<MonthlyResponse>>(
     '/api/v1/analysis-records/monthly',
     { params: month ? { month } : undefined },
@@ -93,8 +68,6 @@ export const getMonthlyAnalysis = async (month?: string): Promise<MonthlyAnalysi
 
 // 종합 해석 조회 (AI 호출 없음, 생성 진행 상태 확인용)
 export const getInterpretation = async (): Promise<Interpretation> => {
-  if (USE_MOCK) return MOCK_INTERPRETATION;
-
   const response = await apiClient.get<ApiResponse<Interpretation>>(
     '/api/v1/analysis-records/interpretation',
   );
@@ -103,8 +76,6 @@ export const getInterpretation = async (): Promise<Interpretation> => {
 
 // 첫 진입 종합 해석 생성 (이미 있으면 기존 해석 재사용, 진행 중이면 PROCESSING)
 export const createInterpretation = async (): Promise<Interpretation> => {
-  if (USE_MOCK) return MOCK_INTERPRETATION;
-
   const response = await apiClient.post<ApiResponse<Interpretation>>(
     '/api/v1/analysis-records/interpretation',
   );
@@ -113,8 +84,6 @@ export const createInterpretation = async (): Promise<Interpretation> => {
 
 // 종합 해석 다시 만들기 (refreshNeeded일 때)
 export const refreshInterpretation = async (): Promise<Interpretation> => {
-  if (USE_MOCK) return MOCK_INTERPRETATION;
-
   const response = await apiClient.post<ApiResponse<Interpretation>>(
     '/api/v1/analysis-records/interpretation/refresh',
   );
