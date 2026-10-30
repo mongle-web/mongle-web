@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import { Navigate, useNavigate } from 'react-router-dom';
 
-import { completeOnboarding } from '@/api/authApi';
+import { completeOnboarding } from '@/api/userApi';
 import ErrorIcon from '@/features/login/components/ErrorIcon';
 import { LOGIN_PATH, useAuth } from '@/hooks/useAuth';
 

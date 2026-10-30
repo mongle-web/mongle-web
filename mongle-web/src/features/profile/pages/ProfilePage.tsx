@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useNavigate } from 'react-router-dom';
 
+import { getMe } from '@/api/userApi';
 import { BackHeader } from '@/components/common';
 import EditIcon from '@/features/profile/components/EditIcon';
 import ProfileIcon from '@/features/profile/components/ProfileIcon';
@@ -11,8 +12,17 @@ import { LOGIN_PATH, useAuth } from '@/hooks/useAuth';
 function ProfilePage() {
   const navigate = useNavigate();
   // 닉네임은 로그인(Refresh) · 온보딩 응답의 사용자 정보를 그대로 사용
-  const { isLoggedIn, user, signOut } = useAuth();
+  const { isLoggedIn, user, signOut, updateUser } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // 들어올 때 서버의 최신 내 정보로 갱신 (실패하면 로그인 때 받은 정보 그대로 표시)
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    getMe()
+      .then(updateUser)
+      .catch(() => {});
+  }, [isLoggedIn, updateUser]);
 
   const handleLogin = () => {
     navigate(LOGIN_PATH);
@@ -37,10 +47,11 @@ function ProfilePage() {
         <div className="relative size-[90px]">
           <ProfileIcon className="size-[90px]" />
 
-          {/* TODO: 누르면 편집 동작되게 */}
+          {/* 편집 배지 → 닉네임 수정 */}
           {isLoggedIn && (
             <button
               type="button"
+              onClick={() => navigate('/profile/nickname')}
               aria-label="프로필 편집"
               className="absolute right-[-4px] bottom-0 flex size-8 cursor-pointer items-center justify-center rounded-full bg-n-300"
             >
