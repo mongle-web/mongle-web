@@ -71,7 +71,7 @@ export default function DreamCharge({ dreamId, cost, canGenerate, onContinue, on
       query.state.error ||
       !query.state.data ||
       isPaymentComplete(query.state.data) ||
-      ['CANCELLED', 'REQUEST_REJECTED'].includes(query.state.data.state)
+      ['CANCELLED', 'REQUEST_REJECTED', 'PAYMENT_REVIEW'].includes(query.state.data.state)
         ? false
         : 3000,
   });
