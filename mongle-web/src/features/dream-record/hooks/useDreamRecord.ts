@@ -316,6 +316,18 @@ export function useDreamRecord() {
     return current;
   }
 
+  // 자동 저장 타이머가 항상 최신 run · saveText 를 쓰도록 ref 에 담아 둠
+  // (함수를 의존성에 직접 넣으면 렌더마다 새로 만들어져서 800ms 타이머가 계속 초기화됨)
+  const autoSaveRef = useRef<(content: string) => void>(() => {});
+
+  useEffect(() => {
+    autoSaveRef.current = (content) => {
+      void run(async () => {
+        await saveText(content);
+      }, true);
+    };
+  });
+
   useEffect(() => {
     if (
       !ready ||
@@ -329,9 +341,7 @@ export function useDreamRecord() {
     }
 
     const timer = setTimeout(() => {
-      void run(async () => {
-        await saveText(draft.content);
-      }, true);
+      autoSaveRef.current(draft.content);
     }, 800);
 
     return () => clearTimeout(timer);
@@ -577,6 +587,7 @@ export function useDreamRecord() {
 
           throw new Error(
             '결제 확인이 진행 중이에요. 잠시 후 잔액과 이미지 생성 상태를 다시 확인해 주세요.',
+            { cause: error },
           );
         }
 
