@@ -4,13 +4,13 @@ import { BackHeader } from '@/components/common';
 import {
   createInterpretation,
   getInterpretation,
-  getMonthlyAnalysis,
 } from '@/features/dream-analysis/api/dreamAnalysisApi';
 import type { Interpretation } from '@/features/dream-analysis/api/dreamAnalysisApi';
 import EmotionSection from '@/features/dream-analysis/components/EmotionSection';
 import InterpretationSection from '@/features/dream-analysis/components/InterpretationSection';
 import IntroSection from '@/features/dream-analysis/components/IntroSection';
 import KeywordSection from '@/features/dream-analysis/components/KeywordSection';
+import { useMonthlyAnalysis } from '@/features/dream-analysis/hooks/useMonthlyAnalysis';
 
 // 해석 생성 중일 때 상태 확인 간격 · 최대 횟수 (3초 x 20회 = 약 1분)
 const INTERPRETATION_POLL_INTERVAL = 3000;
@@ -20,11 +20,8 @@ const isGenerating = (interpretation?: Interpretation) =>
   interpretation?.status === 'PROCESSING' || interpretation?.status === 'NOT_GENERATED';
 
 function DreamAnalysisPage() {
-  // 이번 달 키워드 · 감정 통계 (month 생략 시 서버가 이번 달로 응답)
-  const monthly = useQuery({
-    queryKey: ['analysis-records', 'monthly'],
-    queryFn: () => getMonthlyAnalysis(),
-  });
+  // 이번 달 키워드 · 감정 통계
+  const monthly = useMonthlyAnalysis();
 
   // 종합 해석: 들어오면 생성 요청 (이미 있으면 기존 해석을 그대로 돌려줌)
   const created = useQuery({
