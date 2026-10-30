@@ -1,10 +1,14 @@
 import { useState } from 'react';
 
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { BackHeader } from '@/components/common';
 import { formatDreamDate } from '@/features/calendar/utils/calendar';
-import { DreamNotFoundError } from '@/features/dream-detail/api/dreamDetailApi';
+import {
+  DreamNotFoundError,
+  getDreamMutationStatus,
+} from '@/features/dream-detail/api/dreamDetailApi';
 import DreamDetailImage from '@/features/dream-detail/components/DreamDetailImage';
 import {
   DreamDetailSkeleton,
@@ -61,6 +65,15 @@ function DreamEditForm({ dream }: DreamEditFormProps) {
   const navigate = useNavigate();
   const updateMutation = useUpdateDreamDetail(dream);
 
+  // 들어오면 수정 가능한지 미리 확인 (이야기 · 이미지 · 세계관 작업 중이면 저장 시 409로 막히므로 먼저 안내)
+  // 조회 실패 시에는 저장을 허용 (실제 저장 때 서버가 다시 검사)
+  const mutationStatus = useQuery({
+    queryKey: ['dreams', 'mutation-status', dream.id],
+    queryFn: () => getDreamMutationStatus(dream.id),
+    staleTime: 0,
+  });
+  const isLocked = mutationStatus.data?.mutable === false;
+
   const [title, setTitle] = useState(dream.title);
   const [content, setContent] = useState(dream.content);
 
@@ -69,7 +82,7 @@ function DreamEditForm({ dream }: DreamEditFormProps) {
   const isContentError = content.trim().length === 0;
 
   const handleComplete = () => {
-    if (isTitleError || isContentError || updateMutation.isPending) return;
+    if (isTitleError || isContentError || updateMutation.isPending || isLocked) return;
 
     const nextTitle = title.trim();
     const nextContent = content.trim();
@@ -96,7 +109,7 @@ function DreamEditForm({ dream }: DreamEditFormProps) {
           <button
             type="button"
             onClick={handleComplete}
-            disabled={updateMutation.isPending}
+            disabled={updateMutation.isPending || isLocked}
             className="min-w-7 cursor-pointer text-right text-[14px]! leading-[1.5]! font-semibold! whitespace-nowrap text-p-300 disabled:cursor-default disabled:opacity-50"
           >
             완료
@@ -140,7 +153,13 @@ function DreamEditForm({ dream }: DreamEditFormProps) {
         <DreamTagSection title="감정" tags={dream.emotions} />
         <DreamTagSection title="키워드" tags={dream.keywords} />
 
-        {updateMutation.isError && (
+        {isLocked && (
+          <p role="alert" className="text-center text-[12px] leading-[1.5] text-[#ff6f6f]">
+            이야기와 이미지를 만드는 중이라 지금은 수정할 수 없어요.
+          </p>
+        )}
+
+        {!isLocked && updateMutation.isError && (
           <p role="alert" className="text-center text-[12px] leading-[1.5] text-[#ff6f6f]">
             저장하지 못했어요. 다시 시도해 주세요.
           </p>
