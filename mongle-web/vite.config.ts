@@ -1,3 +1,4 @@
+
 import { fileURLToPath, URL } from 'node:url';
 
 import tailwindcss from '@tailwindcss/vite';
@@ -53,6 +54,9 @@ export default defineConfig({
         navigateFallback: '/index.html',
 
         cleanupOutdatedCaches: true,
+
+        // PWA 캐싱 최대 파일 크기: 5MB
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
     }),
   ],
