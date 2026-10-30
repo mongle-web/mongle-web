@@ -5,7 +5,6 @@ import { useNavigate } from 'react-router-dom';
 
 import { BackHeader } from '@/components/common';
 import CalendarDialog from '@/features/calendar/components/CalendarDialog';
-import { useDeleteDream } from '@/features/calendar/hooks/useDeleteDream';
 import ArchiveDreamCard from '@/features/dream-archive/components/ArchiveDreamCard';
 import ArchiveEmptyState from '@/features/dream-archive/components/ArchiveEmptyState';
 import ArchiveSearchBar from '@/features/dream-archive/components/ArchiveSearchBar';
@@ -16,7 +15,13 @@ import {
   useConnectedDreams,
 } from '@/features/dream-archive/hooks/useArchiveDreams';
 import { useDeleteConnectedDream } from '@/features/dream-archive/hooks/useDeleteConnectedDream';
-import type { ArchiveDream, ArchiveTab } from '@/features/dream-archive/types/dreamArchive';
+import { useDeleteRecordedDream } from '@/features/dream-archive/hooks/useDeleteRecordedDream';
+import type {
+  ArchiveDream,
+  ArchiveTab,
+  ConnectedDream,
+  RecordedDream,
+} from '@/features/dream-archive/types/dreamArchive';
 import ConnectStateView from '@/features/dream-connect/components/ConnectStateView';
 
 // 제목 · 키워드에 검색어가 들어 있는 꿈만 남긴다 (대소문자 · 앞뒤 공백 무시)
@@ -39,7 +44,7 @@ function DreamArchivePage() {
 
   const [selectedTab, setSelectedTab] = useState<ArchiveTab>('recorded');
   const [search, setSearch] = useState('');
-  const [dreamToDelete, setDreamToDelete] = useState<ArchiveDream | null>(null);
+  const [dreamToDelete, setDreamToDelete] = useState<RecordedDream | ConnectedDream | null>(null);
 
   const recordedQuery = useArchiveDreams();
   const connectedQuery = useConnectedDreams();
@@ -48,7 +53,8 @@ function DreamArchivePage() {
 
   // 지금 보고 있는 탭의 목록 상태
   const currentQuery = selectedTab === 'recorded' ? recordedQuery : connectedQuery;
-  const currentDreams = selectedTab === 'recorded' ? recordedDreams : connectedDreams;
+  const currentDreams: ArchiveDream[] =
+    selectedTab === 'recorded' ? recordedDreams : connectedDreams;
 
   // 탭에 꿈이 하나도 없으면 검색창 · 목록 대신 안내 화면 (피그마: 기록한 꿈 iPhone 16 - 119 · 연결된 꿈 124)
   // 검색 결과만 없으면 검색창은 두고 안내 화면 (피그마: iPhone 16 - 125, 두 탭 공통)
@@ -59,9 +65,10 @@ function DreamArchivePage() {
   })();
   const isTabEmpty = emptyType === 'recorded' || emptyType === 'connected';
 
-  const deleteDreamMutation = useDeleteDream();
+  const deleteRecordedMutation = useDeleteRecordedDream();
   const deleteConnectedMutation = useDeleteConnectedDream();
-  const deleteMutation = selectedTab === 'recorded' ? deleteDreamMutation : deleteConnectedMutation;
+  const deleteMutation =
+    selectedTab === 'recorded' ? deleteRecordedMutation : deleteConnectedMutation;
 
   const closeDeleteDialog = () => {
     deleteMutation.reset(); // 이전 실패 메시지 지우기
@@ -71,9 +78,14 @@ function DreamArchivePage() {
   const handleDeleteConfirm = () => {
     if (!dreamToDelete) return;
 
-    deleteMutation.mutate(dreamToDelete.id, {
-      onSuccess: () => setDreamToDelete(null),
-    });
+    const onSuccess = () => setDreamToDelete(null);
+
+    // 기록한 꿈은 revision을 같이 넘겨서 삭제, 연결된 꿈은 세계관 id로 삭제
+    if ('revision' in dreamToDelete) {
+      deleteRecordedMutation.mutate(dreamToDelete, { onSuccess });
+    } else {
+      deleteConnectedMutation.mutate(dreamToDelete.id, { onSuccess });
+    }
   };
 
   // 불러오는 중 · 불러오기 실패면 탭 없이 안내 화면 (실패는 화면을 나갔다 들어오면 다시 불러옴)
