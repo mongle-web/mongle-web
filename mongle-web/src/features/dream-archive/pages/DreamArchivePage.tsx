@@ -23,6 +23,7 @@ import type {
   RecordedDream,
 } from '@/features/dream-archive/types/dreamArchive';
 import ConnectStateView from '@/features/dream-connect/components/ConnectStateView';
+import { useDreamDeleteCheck } from '@/features/dream-detail/hooks/useDreamDeleteCheck';
 
 // 제목 · 키워드에 검색어가 들어 있는 꿈만 남긴다 (대소문자 · 앞뒤 공백 무시)
 const filterBySearch = <T extends ArchiveDream>(dreams: T[], search: string) => {
@@ -69,6 +70,11 @@ function DreamArchivePage() {
   const deleteConnectedMutation = useDeleteConnectedDream();
   const deleteMutation =
     selectedTab === 'recorded' ? deleteRecordedMutation : deleteConnectedMutation;
+  // 기록한 꿈 삭제 확인 창이 열리면 생성 중인지 · 연결된 꿈(세계관)에 쓰이는지 미리 확인
+  // (연결된 꿈 탭은 세계관 자체를 지우는 것이라 확인하지 않음)
+  const deleteCheck = useDreamDeleteCheck(
+    dreamToDelete && !('connectedDreamCount' in dreamToDelete) ? dreamToDelete.id : null,
+  );
 
   const closeDeleteDialog = () => {
     deleteMutation.reset(); // 이전 실패 메시지 지우기
@@ -151,14 +157,16 @@ function DreamArchivePage() {
             key="delete-dream"
             title="정말 꿈을 삭제할까요?"
             confirmLabel={deleteMutation.isPending ? '삭제 중...' : '삭제'}
-            isConfirmDisabled={deleteMutation.isPending}
+            isConfirmDisabled={
+              deleteMutation.isPending || deleteCheck.isChecking || !deleteCheck.canDelete
+            }
             onCancel={closeDeleteDialog}
             onConfirm={handleDeleteConfirm}
           >
             <p className="w-full text-[14px] leading-[1.5] font-medium text-b-400">
               {deleteMutation.isError
                 ? '삭제하지 못했어요. 다시 시도해 주세요.'
-                : '삭제하면 다시 되돌릴 수 없어요.'}
+                : deleteCheck.message}
             </p>
           </CalendarDialog>
         )}
