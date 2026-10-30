@@ -1,5 +1,7 @@
 import axios from 'axios';
 
+import { authStorage } from '@/api/authStorage';
+
 // 로그인 · 로그아웃 관련 API (백엔드 문서: mongle-server docs/kakao-oauth-web.md)
 // Refresh · CSRF 쿠키를 주고받아야 해서 apiClient와 따로 withCredentials 인스턴스를 사용
 // (apiClient의 401 → 재발급 처리와 서로 맞물려 무한 반복되지 않도록 분리)
@@ -109,6 +111,22 @@ export const refreshSession = (): Promise<Session> => {
   });
 
   return refreshing;
+};
+
+// 닉네임 온보딩 완료 (가입 마무리, 최초 완료 시 3크레딧 지급)
+// 로그인 직후 호출되므로 apiClient 대신 authClient에 Bearer를 직접 붙임 (client.ts와 서로 import 하지 않도록)
+export const completeOnboarding = async (nickname: string): Promise<AuthUser> => {
+  if (IS_AUTH_MOCK) {
+    setMockAuthState('member');
+    return { ...createMockSession('member').user, nickname };
+  }
+
+  const response = await authClient.post<ApiResponse<AuthUser>>(
+    '/api/v1/users/me/onboarding',
+    { nickname },
+    { headers: { Authorization: `Bearer ${authStorage.getAccessToken()}` } },
+  );
+  return response.data.data;
 };
 
 // 로그아웃 (현재 기기의 Refresh 쿠키 삭제, 다른 기기 로그인은 유지)
