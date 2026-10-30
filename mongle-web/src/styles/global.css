@@ -132,7 +132,6 @@ img {
   min-height: 100vh;
 }
 
-
 /* =========================================
    MONGLE DREAM RECORD UI
    ========================================= */
@@ -162,8 +161,7 @@ img {
 .mongle-dream-input {
   border: 1px solid rgba(206, 204, 226, 0.045);
   background: #292834;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
 }
 
 .mongle-dream-textarea {
@@ -185,11 +183,7 @@ img {
   max-width: 520px;
   margin-inline: auto;
 
-  background: linear-gradient(
-    180deg,
-    rgba(30, 29, 39, 0.94),
-    #1e1d27 28%
-  );
+  background: linear-gradient(180deg, rgba(30, 29, 39, 0.94), #1e1d27 28%);
 
   padding-top: 18px;
 }
@@ -260,8 +254,8 @@ img {
 
   background: linear-gradient(
     180deg,
-    rgba(12, 11, 18, 0.30) 0%,
-    rgba(12, 11, 18, 0.10) 48%,
+    rgba(12, 11, 18, 0.3) 0%,
+    rgba(12, 11, 18, 0.1) 48%,
     rgba(12, 11, 18, 0.74) 100%
   );
 
@@ -279,8 +273,7 @@ img {
 }
 
 /* 선택되지 않은 이미지 */
-.mongle-style-card:not(.is-selected)
-.mongle-style-image {
+.mongle-style-card:not(.is-selected) .mongle-style-image {
   filter: brightness(0.68) saturate(0.86);
 }
 
@@ -289,14 +282,13 @@ img {
   border: 1px solid rgba(211, 204, 255, 0.78);
 
   box-shadow:
-    0 0 0 1px rgba(159, 143, 255, 0.20),
+    0 0 0 1px rgba(159, 143, 255, 0.2),
     0 0 18px rgba(181, 166, 255, 0.44),
     0 0 34px rgba(122, 108, 227, 0.22);
 }
 
 /* 선택된 이미지 */
-.mongle-style-card.is-selected
-.mongle-style-image {
+.mongle-style-card.is-selected .mongle-style-image {
   filter: brightness(1.04) saturate(1.04);
   transform: scale(1.025);
 }
@@ -304,7 +296,7 @@ img {
 /* 화풍 이름 */
 .mongle-style-label {
   color: #fff;
-  background: rgba(20, 19, 27, 0.20);
+  background: rgba(20, 19, 27, 0.2);
   text-shadow: 0 1px 5px rgba(0, 0, 0, 0.5);
 }
 
@@ -358,5 +350,76 @@ img {
   .mongle-style-card {
     height: 218px;
     border-radius: 21px;
+  }
+}
+
+/* Dream record interactions: keep motion subtle and scoped to this feature. */
+.mongle-dream-record button {
+  transition-property: transform, color, background-color, border-color, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
+}
+
+.mongle-dream-record button:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.mongle-dream-record button:focus-visible {
+  outline: 2px solid var(--color-p-300);
+  outline-offset: 4px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .mongle-dream-record .mongle-dream-style-card:not([aria-disabled='true']):hover {
+    transform: translateY(-2px);
+    border-color: rgba(188, 179, 255, 0.8);
+    box-shadow: 0 0 14px rgba(188, 179, 255, 0.24);
+  }
+
+  .mongle-dream-record
+    .mongle-dream-style-card:not([aria-disabled='true']):hover
+    .mongle-dream-style-image {
+    transform: scale(1.015);
+  }
+
+  .mongle-dream-record
+    .mongle-dream-style-card:not([aria-disabled='true']):not([aria-checked='true']):hover
+    .mongle-dream-style-image {
+    filter: brightness(0.76) saturate(0.9);
+  }
+
+  .mongle-dream-record
+    .mongle-dream-style-card[aria-checked='true']:not([aria-disabled='true']):hover
+    .mongle-dream-style-image {
+    filter: brightness(1.04) saturate(1.04);
+  }
+}
+
+.mongle-dream-record .mongle-dream-style-card:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mongle-dream-record button {
+    transition-duration: 0ms;
+  }
+
+  .mongle-dream-record button:not(:disabled):active {
+    transform: none;
+  }
+
+  .mongle-dream-record .mongle-dream-style-card:not([aria-disabled='true']):hover {
+    transform: none;
+  }
+
+  .mongle-dream-record
+    .mongle-dream-style-card:not([aria-disabled='true']):hover
+    .mongle-dream-style-image {
+    transform: none;
+  }
+
+  .mongle-dream-record .mongle-dream-style-card:not(:disabled):active,
+  .mongle-dream-record .mongle-dream-style-image {
+    transform: none;
   }
 }

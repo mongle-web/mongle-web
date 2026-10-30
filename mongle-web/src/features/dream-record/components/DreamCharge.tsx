@@ -413,7 +413,11 @@ export default function DreamCharge({ dreamId, cost, canGenerate, onContinue }: 
       )}
 
       {selectedProduct && (
-        <FlowModal title="결제 정보를 입력해 주세요" onClose={() => setSelectedProduct(null)}>
+        <FlowModal
+          title="결제 정보를 입력해 주세요"
+          onClose={() => setSelectedProduct(null)}
+          animate
+        >
           <label className="block text-left text-[14px] text-b-400">
             결제용 휴대폰 번호
             <input

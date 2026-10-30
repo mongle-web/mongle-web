@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { motion, useReducedMotion } from 'framer-motion';
 
 import { FlowModal, Glow, PrimaryButton, SecondaryButton, TokenCost } from '@/components/common';
 
@@ -32,6 +33,7 @@ function DreamRecordFlow() {
   const [params, setParams] = useSearchParams();
 
   const flow = useDreamRecord();
+  const reduceMotion = useReducedMotion();
 
   const [viewOverride, setViewOverride] = useState<DreamImageView | null>(null);
   const [chosenStyleOverride, setChosenStyleOverride] = useState('');
@@ -143,7 +145,7 @@ function DreamRecordFlow() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col overflow-x-clip bg-b-900 pt-[env(safe-area-inset-top)] text-b-200">
+    <div className="mongle-dream-record flex min-h-dvh flex-col overflow-x-clip bg-b-900 pt-[env(safe-area-inset-top)] text-b-200">
       {!finished && (
         <header className="grid h-11 shrink-0 grid-cols-[28px_minmax(0,1fr)_28px] items-center px-5">
           <button
@@ -175,7 +177,13 @@ function DreamRecordFlow() {
         </header>
       )}
 
-      <main className={`flex-1 px-5 ${finished ? 'pt-[154px] text-center' : 'pt-5'}`}>
+      <motion.main
+        key={screen}
+        initial={reduceMotion ? false : { opacity: 0, y: 3 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: reduceMotion ? 0 : 0.16, ease: 'easeOut' }}
+        className={`flex-1 px-5 ${finished ? 'pt-[154px] text-center' : 'pt-5'}`}
+      >
         {screen === 'text' && (
           <>
             <h1 className="text-[18px] leading-[1.4] font-semibold">오늘 밤, 무엇을 보았나요?</h1>
@@ -360,7 +368,7 @@ function DreamRecordFlow() {
             )}
           </>
         )}
-      </main>
+      </motion.main>
 
       <footer className="sticky bottom-0 z-10 bg-b-900 px-5 pt-3 pb-[max(16px,env(safe-area-inset-bottom))]">
         {flow.storageWarning && (
@@ -468,7 +476,7 @@ function DreamRecordFlow() {
       )}
 
       {flow.imageBusy && !loadingClosed && (
-        <FlowModal title="이미지 생성 중" onClose={() => setLoadingClosed(true)}>
+        <FlowModal title="이미지 생성 중" onClose={() => setLoadingClosed(true)} animate>
           <button
             type="button"
             aria-label="진행 창 닫기"
@@ -491,7 +499,11 @@ function DreamRecordFlow() {
       )}
 
       {flow.image.data?.status === 'FAILED' && showImageFailure && (
-        <FlowModal title="이미지 생성 실패" onClose={() => setDismissedFailureKey(failureKey)}>
+        <FlowModal
+          title="이미지 생성 실패"
+          onClose={() => setDismissedFailureKey(failureKey)}
+          animate
+        >
           <button
             type="button"
             aria-label="안내 창 닫기"
