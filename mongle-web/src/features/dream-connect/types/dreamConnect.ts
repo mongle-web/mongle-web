@@ -70,6 +70,8 @@ export interface WorldImage {
   status: WorldCompositionStatus; // PENDING · PROCESSING · COMPLETED · FAILED
   imageVersion: number;
   failureCode?: string;
+  hasPreviousResult?: boolean; // 이전에 성공한 이미지가 있으면 true (다시 만들 때 재생성으로 요청)
+  nextRegenerationCost?: number | null; // 다음 재생성 비용 (첫 재생성 무료 0, 이후 1)
 }
 
 // 세계관 이미지 최초 생성에 필요한 토큰(크레딧) 수 (백엔드 정책: 최초 생성 3, 첫 재생성 무료, 이후 재생성 1)

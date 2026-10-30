@@ -8,12 +8,23 @@ import {
   getWorldImageUrl,
 } from '@/features/dream-connect/api/dreamConnectApi';
 import { IMAGE_TOKEN_COST } from '@/features/dream-connect/types/dreamConnect';
+import type { WorldImage } from '@/features/dream-connect/types/dreamConnect';
 import { isJobInProgress, isTimeoutError, pollJob } from '@/features/dream-connect/utils/polling';
 
 type ImageStatus = 'idle' | 'generating' | 'noTokens' | 'error';
 
+// TODO: 꿈 연결 화풍 선택 화면(디자인 작업 중)이 생기면 사용자가 고른 화풍으로 교체
+//   (실제 API는 style이 필수라 그전까지 임시로 초현실주의 사용)
+const TEMP_IMAGE_STYLE = 'surrealism';
+
+// 이번 이미지에 필요한 토큰 수 (이전에 성공한 이미지가 있으면 서버가 알려준 재생성 비용)
+const getRequiredTokens = (previous: WorldImage | null) =>
+  previous && (previous.status === 'COMPLETED' || previous.hasPreviousResult)
+    ? (previous.nextRegenerationCost ?? IMAGE_TOKEN_COST)
+    : IMAGE_TOKEN_COST;
+
 // 연결한 꿈 "그림으로 남기기"
-// 1) 토큰 확인 → 2) 이미지 생성 시작 → 3) 완료될 때까지 상태 확인 → 4) 이미지 주소 받기
+// 1) 토큰 확인(처음 3 · 재생성은 서버가 알려준 비용) → 2) 이미지 생성 시작 → 3) 완료될 때까지 상태 확인 → 4) 이미지 주소 받기
 // 생성 중 모달을 닫아도 서버에서는 계속 만들어지므로(토큰도 사용됨) 화면에서도 계속 기다렸다가 완료되면 이동
 export const useCreateWorldImage = (worldId: number, onCompleted: (imageUrl: string) => void) => {
   const [status, setStatus] = useState<ImageStatus>('idle');
@@ -33,8 +44,11 @@ export const useCreateWorldImage = (worldId: number, onCompleted: (imageUrl: str
     isRunningRef.current = true;
 
     try {
+      // 생성 요청 전 이미지 상태 (처음 만드는 경우 없을 수 있음, 재생성 여부 · 새 작업인지 비교용)
+      const before = await getWorldImage(worldId).catch(() => null);
+
       const credits = await getCreditBalance();
-      if (credits < IMAGE_TOKEN_COST) {
+      if (credits < getRequiredTokens(before)) {
         setStatus('noTokens');
         return;
       }
@@ -42,11 +56,9 @@ export const useCreateWorldImage = (worldId: number, onCompleted: (imageUrl: str
       setStatus('generating');
 
       const { compositionRevision } = await getComposition(worldId);
-      // 생성 요청 전 이미지 상태 (처음 만드는 경우 없을 수 있음, 요청 뒤 새 작업인지 비교용)
-      const before = await getWorldImage(worldId).catch(() => null);
 
       try {
-        await createWorldImage(worldId, compositionRevision);
+        await createWorldImage(worldId, compositionRevision, TEMP_IMAGE_STYLE, before);
       } catch (error) {
         // 제한시간 초과는 서버에 접수됐을 수 있어서 다시 보내지 않고(토큰 중복 사용 방지) 상태 확인으로 넘어감
         if (!isTimeoutError(error)) throw error;

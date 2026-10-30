@@ -98,7 +98,7 @@ function CalendarPage() {
   const handleAddDream = () => {
     if (!selectedDateKey) return;
 
-    // TODO: 꿈 기록 화면(DreamRecordPage)에서 ?date= 값을 읽어 기록 날짜로 쓰도록 담당자와 협의
+    // 꿈 기록 화면이 ?date= 값을 기록 날짜로 사용
     navigate(`/dreams/new?date=${selectedDateKey}`);
   };
 
