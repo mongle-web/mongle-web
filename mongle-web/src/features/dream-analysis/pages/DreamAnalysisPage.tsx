@@ -4,6 +4,7 @@ import { BackHeader } from '@/components/common';
 import {
   createInterpretation,
   getInterpretation,
+  refreshInterpretation,
 } from '@/features/dream-analysis/api/dreamAnalysisApi';
 import type { Interpretation } from '@/features/dream-analysis/api/dreamAnalysisApi';
 import EmotionSection from '@/features/dream-analysis/components/EmotionSection';
@@ -16,6 +17,13 @@ import { useMonthlyAnalysis } from '@/features/dream-analysis/hooks/useMonthlyAn
 const INTERPRETATION_POLL_INTERVAL = 3000;
 const INTERPRETATION_POLL_MAX = 20;
 
+// 들어오면 해석 생성 요청 (이미 있으면 기존 해석), 그 뒤 새 꿈이 생겼으면(refreshNeeded) 바로 다시 만들기
+// 서버는 해석을 자동으로 갱신하지 않으므로 화면 진입 시 갱신까지 처리
+const loadInterpretation = async () => {
+  const interpretation = await createInterpretation();
+  return interpretation.refreshNeeded ? refreshInterpretation() : interpretation;
+};
+
 const isGenerating = (interpretation?: Interpretation) =>
   interpretation?.status === 'PROCESSING' || interpretation?.status === 'NOT_GENERATED';
 
@@ -23,10 +31,10 @@ function DreamAnalysisPage() {
   // 이번 달 키워드 · 감정 통계
   const monthly = useMonthlyAnalysis();
 
-  // 종합 해석: 들어오면 생성 요청 (이미 있으면 기존 해석을 그대로 돌려줌)
+  // 종합 해석 (생성 · 필요 시 갱신)
   const created = useQuery({
     queryKey: ['analysis-records', 'interpretation', 'create'],
-    queryFn: createInterpretation,
+    queryFn: loadInterpretation,
     retry: false,
   });
 
@@ -42,7 +50,8 @@ function DreamAnalysisPage() {
         : false,
   });
 
-  const interpretation = polled.data ?? created.data;
+  // 상태 확인 결과는 생성 중일 때만 사용 (이전 방문 때 캐시된 확인 결과가 새 해석을 가리지 않도록)
+  const interpretation = isGenerating(created.data) ? (polled.data ?? created.data) : created.data;
 
   // 해석 영역에 보여줄 글 (실패하면 해석 영역을 보여주지 않음)
   const interpretationText = (() => {
