@@ -1,7 +1,5 @@
 import axios from 'axios';
 
-import { authStorage } from '@/api/authStorage';
-
 // 로그인 · 로그아웃 관련 API (백엔드 문서: mongle-server docs/kakao-oauth-web.md)
 // Refresh · CSRF 쿠키를 주고받아야 해서 apiClient와 따로 withCredentials 인스턴스를 사용
 // (apiClient의 401 → 재발급 처리와 서로 맞물려 무한 반복되지 않도록 분리)
@@ -31,9 +29,8 @@ export const setMockAuthState = (state: MockAuthState | null) => {
   else localStorage.removeItem(MOCK_AUTH_KEY);
 };
 
-const createMockSession = (state: MockAuthState): Session => ({
-  // .env.local 에 VITE_DEV_ACCESS_TOKEN(배포 사이트에서 로그인 후 받은 진짜 토큰)이 있으면 실제 API도 로컬에서 호출 가능
-  accessToken: import.meta.env.VITE_DEV_ACCESS_TOKEN || 'mock-access-token',
+export const createMockSession = (state: MockAuthState): Session => ({
+  accessToken: 'mock-access-token',
   tokenType: 'Bearer',
   expiresIn: 3600,
   user: {
@@ -43,6 +40,23 @@ const createMockSession = (state: MockAuthState): Session => ({
     onboardingCompleted: state === 'member',
   },
 });
+
+// 개발 토큰(VITE_DEV_ACCESS_TOKEN)이 있으면 가짜 사용자 대신 진짜 내 정보로 로그인 상태를 만듦
+// (로컬에서도 배포 사이트와 같은 계정 · 닉네임 · 가입 상태로 보임, mock-auth 상태 값은 사용하지 않음)
+const DEV_ACCESS_TOKEN: string | undefined = import.meta.env.VITE_DEV_ACCESS_TOKEN;
+
+const getDevSession = async (): Promise<Session> => {
+  const response = await authClient.get<ApiResponse<AuthUser>>('/api/v1/users/me', {
+    headers: { Authorization: `Bearer ${DEV_ACCESS_TOKEN}` },
+  });
+
+  return {
+    accessToken: DEV_ACCESS_TOKEN ?? '',
+    tokenType: 'Bearer',
+    expiresIn: 3600,
+    user: response.data.data,
+  };
+};
 
 // 카카오 로그인 시작 (mock이면 백엔드 대신 바로 로그인 완료 페이지로)
 export const startKakaoLogin = () => {
@@ -55,7 +69,7 @@ export const startKakaoLogin = () => {
   window.location.href = KAKAO_LOGIN_URL;
 };
 
-interface ApiResponse<T> {
+export interface ApiResponse<T> {
   success: boolean;
   code: string;
   message: string;
@@ -96,6 +110,8 @@ export const refreshSession = (): Promise<Session> => {
   if (refreshing) return refreshing;
 
   if (IS_AUTH_MOCK) {
+    if (DEV_ACCESS_TOKEN) return getDevSession();
+
     const state = getMockState();
     return state
       ? Promise.resolve(createMockSession(state))
@@ -113,22 +129,6 @@ export const refreshSession = (): Promise<Session> => {
   });
 
   return refreshing;
-};
-
-// 닉네임 온보딩 완료 (가입 마무리, 최초 완료 시 3크레딧 지급)
-// 로그인 직후 호출되므로 apiClient 대신 authClient에 Bearer를 직접 붙임 (client.ts와 서로 import 하지 않도록)
-export const completeOnboarding = async (nickname: string): Promise<AuthUser> => {
-  if (IS_AUTH_MOCK) {
-    setMockAuthState('member');
-    return { ...createMockSession('member').user, nickname };
-  }
-
-  const response = await authClient.post<ApiResponse<AuthUser>>(
-    '/api/v1/users/me/onboarding',
-    { nickname },
-    { headers: { Authorization: `Bearer ${authStorage.getAccessToken()}` } },
-  );
-  return response.data.data;
 };
 
 // 로그아웃 (현재 기기의 Refresh 쿠키 삭제, 다른 기기 로그인은 유지)

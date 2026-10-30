@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useNavigate } from 'react-router-dom';
 
+import { getMe } from '@/api/userApi';
 import { BackHeader } from '@/components/common';
 import EditIcon from '@/features/profile/components/EditIcon';
 import ProfileIcon from '@/features/profile/components/ProfileIcon';
@@ -11,8 +12,17 @@ import { LOGIN_PATH, useAuth } from '@/hooks/useAuth';
 function ProfilePage() {
   const navigate = useNavigate();
   // 닉네임은 로그인(Refresh) · 온보딩 응답의 사용자 정보를 그대로 사용
-  const { isLoggedIn, user, signOut } = useAuth();
+  const { isLoggedIn, user, signOut, updateUser } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // 들어올 때 서버의 최신 내 정보로 갱신 (실패하면 로그인 때 받은 정보 그대로 표시)
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    getMe()
+      .then(updateUser)
+      .catch(() => {});
+  }, [isLoggedIn, updateUser]);
 
   const handleLogin = () => {
     navigate(LOGIN_PATH);
