@@ -58,7 +58,7 @@ interface DreamEditFormProps {
 
 function DreamEditForm({ dream }: DreamEditFormProps) {
   const navigate = useNavigate();
-  const updateMutation = useUpdateDreamDetail(dream.id);
+  const updateMutation = useUpdateDreamDetail(dream);
 
   const [title, setTitle] = useState(dream.title);
   const [content, setContent] = useState(dream.content);

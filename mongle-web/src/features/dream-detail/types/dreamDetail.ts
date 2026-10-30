@@ -6,7 +6,6 @@ export interface DreamStorySegment {
 }
 
 // 꿈 상세 정보
-// TODO: 백엔드 API 응답 구조가 확정되면 필드 이름을 맞춰서 수정
 export interface DreamDetail {
   id: number;
   date: string; // 'YYYY-MM-DD'
@@ -16,6 +15,7 @@ export interface DreamDetail {
   imageUrl?: string; // 생성한 꿈 이미지 (없으면 "이미지 생성하기" 표시)
   emotions: string[]; // 사용자가 고른 감정 (1~3개)
   keywords: string[]; // AI가 뽑은 키워드 (1~5개)
+  revision: number; // 수정할 때 백엔드에 넘기는 최신 버전
 }
 
 // 꿈 수정 요청 (제목 · 내용만 수정 가능, 감정 · 키워드는 수정 불가)
