@@ -1,16 +1,16 @@
 import type { CalendarDream } from '@/features/calendar/types/calendar';
 import { toDateKey } from '@/features/calendar/utils/calendar';
 
-// 개발용 Mock 데이터
+// 개발용 Mock 데이터 (캘린더 · 보관함은 실제 API 사용, 지금은 꿈 연결하기 Mock에서만 사용)
 // 어느 달에 실행해도 화면이 보이도록 "이번 달 / 지난 달" 기준으로 날짜를 만든다.
-// TODO: 백엔드 API 연동 후 삭제
+// TODO: 꿈 연결하기 API 연동 후 삭제
 
 const today = new Date();
 
 const dateOf = (monthOffset: number, day: number) =>
   toDateKey(new Date(today.getFullYear(), today.getMonth() + monthOffset, day));
 
-export const calendarMockDreams: CalendarDream[] = [
+export const calendarMockDreams: Omit<CalendarDream, 'revision'>[] = [
   {
     id: 1,
     date: dateOf(0, 3),

@@ -76,7 +76,7 @@ function CalendarPage() {
   const handleDeleteConfirm = () => {
     if (!dreamToDelete) return;
 
-    deleteDreamMutation.mutate(dreamToDelete.id, {
+    deleteDreamMutation.mutate(dreamToDelete, {
       onSuccess: () => {
         // 삭제한 꿈 카드를 닫고 캘린더를 다시 펼친다
         setSelectedDateKey(null);
