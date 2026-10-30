@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 
 import { updateNickname } from '@/api/userApi';
+import { BackHeader } from '@/components/common';
 import { LOGIN_PATH, useAuth } from '@/hooks/useAuth';
 
 // 닉네임 규칙 (닉네임 온보딩 페이지와 같음)
@@ -27,10 +28,6 @@ function NicknameEditPage() {
   // 빈 칸 · 허용 안 되는 문자 · 10자 초과는 에러 (1자 · 입력 중인 자음 모음은 문구 없이 저장만 막음)
   const isError =
     nickname.length === 0 || INVALID_CHAR_REGEX.test(nickname) || nickname.length > MAX_LENGTH;
-
-  const handleBack = () => {
-    navigate(-1);
-  };
 
   // 저장 버튼은 항상 같은 모양, 규칙을 통과하지 못하면 눌러도 저장하지 않음
   const handleSave = async () => {
@@ -66,34 +63,17 @@ function NicknameEditPage() {
 
   return (
     <div className="min-h-dvh bg-b-900">
-      {/* 상단 바 (뒤로가기 · 제목 · 저장, BackHeader와 같은 크기) */}
-      <header className="flex items-center justify-between px-5 py-2">
-        <button
-          type="button"
-          onClick={handleBack}
-          aria-label="이전 화면"
-          className="size-7 cursor-pointer text-b-200"
-        >
-          <svg viewBox="0 0 28 28" fill="none" aria-hidden="true" className="size-7">
-            <path
-              d="M15.1665 7L8.1665 14L15.1665 21"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
-
-        <h1 className="text-center text-[16px] leading-[1.5] font-medium text-b-200">마이페이지</h1>
-
-        {/* 전역 button { font: inherit } 이 글자 클래스를 덮어써서 span에 지정 */}
-        <button type="button" onClick={handleSave} className="cursor-pointer">
-          <span className="text-right text-[14px] leading-[1.5] font-semibold text-p-300">
-            저장
-          </span>
-        </button>
-      </header>
+      <BackHeader
+        title="마이페이지"
+        rightSlot={
+          // 전역 button { font: inherit } 이 글자 클래스를 덮어써서 span에 지정
+          <button type="button" onClick={handleSave} className="cursor-pointer">
+            <span className="text-right text-[14px] leading-[1.5] font-semibold text-p-300">
+              저장
+            </span>
+          </button>
+        }
+      />
 
       {/* 닉네임 입력 (TODO: 헤더 아래 간격 · 안내 문구 간격은 캡처 기준 추정값) */}
       <section className="flex flex-col px-5 pt-11">
