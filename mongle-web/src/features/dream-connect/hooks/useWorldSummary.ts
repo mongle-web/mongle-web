@@ -1,19 +1,58 @@
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
 
-import { getWorldSummary } from '@/features/dream-connect/api/dreamConnectApi';
-import { POLLING_INTERVAL_MS } from '@/features/dream-connect/utils/polling';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+
+import { getWorldSummary, requestWorldSummary } from '@/features/dream-connect/api/dreamConnectApi';
+
+// 요약 상태 확인 간격 (백엔드 권장값)
+// 처음에는 2초마다, 30초가 지나면 5초마다 확인 (30초가 지나도 실패로 보지 않고 계속 확인)
+const SUMMARY_POLLING_MS = 2000;
+const SUMMARY_SLOW_POLLING_MS = 5000;
+const SUMMARY_SLOW_AFTER_MS = 30000;
+
+// 키를 연결 결과 키 아래에 둬서 "+"로 다시 연결했을 때 결과와 함께 다시 불러옴
+const summaryQueryKey = (worldId: number) => ['dreams', 'connect', 'world', worldId, 'summary'];
 
 // 연결 결과 화면의 세계관 요약 (AI 제목 · 공통 키워드 · 반복되는 감정)
-// 요약은 연결이 완성된 뒤 서버가 따로 만들어서, 만드는 중이면 완료될 때까지 다시 확인
-// 키를 연결 결과 키 아래에 둬서 "+"로 다시 연결했을 때 결과와 함께 다시 불러옴
+// - 요약은 연결이 완성된 뒤 서버가 따로 만들어서, 만드는 중(PENDING · PROCESSING)이면 끝날 때까지 다시 확인
+// - 완료 · 실패 · 출처 없음(COMPLETED · FAILED · EMPTY)이 되거나 화면을 벗어나면 확인 중단
+// - 한 번도 만든 적 없는 세계관(NOT_GENERATED)이면 한 번만 생성을 요청 (무료)
+//   실패(FAILED)는 자동으로 다시 요청하지 않음 (TODO: "다시 시도" 버튼은 디자인 확인 중)
 export const useWorldSummary = (worldId: number) => {
-  return useQuery({
-    queryKey: ['dreams', 'connect', 'world', worldId, 'summary'],
+  const queryClient = useQueryClient();
+
+  // 만드는 중 상태를 처음 본 시각 (30초가 지나면 확인 간격을 늘림)
+  const pollingStartedAtRef = useRef<number | null>(null);
+  const hasRequestedRef = useRef(false);
+
+  const query = useQuery({
+    queryKey: summaryQueryKey(worldId),
     queryFn: () => getWorldSummary(worldId),
     enabled: Number.isInteger(worldId) && worldId > 0,
-    refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      return status === 'PENDING' || status === 'PROCESSING' ? POLLING_INTERVAL_MS : false;
+    refetchInterval: (current) => {
+      const status = current.state.data?.status;
+      if (status !== 'PENDING' && status !== 'PROCESSING') {
+        pollingStartedAtRef.current = null;
+        return false;
+      }
+
+      pollingStartedAtRef.current ??= Date.now();
+      const elapsed = Date.now() - pollingStartedAtRef.current;
+      return elapsed >= SUMMARY_SLOW_AFTER_MS ? SUMMARY_SLOW_POLLING_MS : SUMMARY_POLLING_MS;
     },
   });
+
+  const status = query.data?.status;
+
+  useEffect(() => {
+    if (status !== 'NOT_GENERATED' || hasRequestedRef.current) return;
+    hasRequestedRef.current = true;
+
+    // 요청에 실패해도 제목은 폴더 이름으로 보여주므로 조용히 넘어감
+    requestWorldSummary(worldId)
+      .then(() => queryClient.invalidateQueries({ queryKey: summaryQueryKey(worldId) }))
+      .catch(() => {});
+  }, [status, worldId, queryClient]);
+
+  return query;
 };

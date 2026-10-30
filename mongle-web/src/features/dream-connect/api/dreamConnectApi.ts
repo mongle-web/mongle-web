@@ -13,6 +13,7 @@ import {
   getWorldResultMock,
   getWorldSummaryMock,
   removeDreamFromWorldMock,
+  requestWorldSummaryMock,
   startCompositionMock,
 } from '@/features/dream-connect/mocks/dreamConnectMockData';
 import type {
@@ -133,6 +134,14 @@ export const getWorldSummary = async (worldId: number): Promise<WorldSummary> =>
     recurringEmotions: data.recurringEmotions.map(({ label }) => label),
     hasPreviousResult: data.hasPreviousResult,
   };
+};
+
+// 세계관 요약 생성 요청 (무료, 같은 요청이 진행 중이면 서버가 이어서 처리)
+// 요약이 한 번도 만들어지지 않은 세계관(NOT_GENERATED)일 때 사용, 접수 후 getWorldSummary로 상태 확인
+// TODO: POST /api/v1/worlds/{worldId}/summary (요청 본문 없음)
+export const requestWorldSummary = async (worldId: number): Promise<void> => {
+  await wait(100);
+  if (!requestWorldSummaryMock(worldId)) throw new Error('세계관 요약을 요청하지 못했어요.');
 };
 
 // 세계관 폴더 삭제 (연결 중단 시 사용, 원본 꿈은 지워지지 않음)
