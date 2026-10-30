@@ -20,4 +20,5 @@ export interface RecordedDream extends ArchiveDream {
 export interface ConnectedDream extends ArchiveDream {
   firstDreamTitle: string; // 연결한 꿈 중 가장 오래된 꿈 제목
   connectedDreamCount: number; // 연결한 꿈 수
+  revision: number; // 삭제할 때 백엔드에 넘기는 최신 버전
 }

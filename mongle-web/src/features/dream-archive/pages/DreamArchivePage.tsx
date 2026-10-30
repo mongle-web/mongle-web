@@ -80,11 +80,11 @@ function DreamArchivePage() {
 
     const onSuccess = () => setDreamToDelete(null);
 
-    // 기록한 꿈은 revision을 같이 넘겨서 삭제, 연결된 꿈은 세계관 id로 삭제
-    if ('revision' in dreamToDelete) {
+    // 기록한 꿈 · 연결된 꿈(세계관) 각각의 삭제 API로 삭제
+    if (!('connectedDreamCount' in dreamToDelete)) {
       deleteRecordedMutation.mutate(dreamToDelete, { onSuccess });
     } else {
-      deleteConnectedMutation.mutate(dreamToDelete.id, { onSuccess });
+      deleteConnectedMutation.mutate(dreamToDelete, { onSuccess });
     }
   };
 

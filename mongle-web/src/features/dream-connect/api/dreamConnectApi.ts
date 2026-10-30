@@ -1,4 +1,5 @@
-// import { apiClient } from '@/api/client';
+import type { ApiResponse } from '@/api/authApi';
+import { apiClient } from '@/api/client';
 import {
   addDreamToWorldMock,
   createWorldImageMock,
@@ -25,109 +26,313 @@ import type {
   WorldResult,
   WorldSummary,
 } from '@/features/dream-connect/types/dreamConnect';
+import { UNTITLED_DREAM_TITLE } from '@/features/dream-detail/types/dreamDetail';
 
-// 실제 네트워크 요청처럼 보이도록 약간 지연 (로딩 UI 확인용)
+// 실제 세계관 API 사용 여부 (.env 의 VITE_WORLD_API=true 일 때만 실제 API)
+// 운영 서버에서 세계관 기능이 꺼져 있는 동안은 false로 두고 Mock 사용
+export const USE_WORLD_API = import.meta.env.VITE_WORLD_API === 'true';
+
+// 실제 네트워크 요청처럼 보이도록 약간 지연 (Mock 로딩 UI 확인용)
 const wait = (ms = 300) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// 연결할 꿈 목록 (감정 선택까지 끝낸 꿈)
-// TODO: 백엔드 API 연동 시 Mock 부분을 지우고 아래 코드로 교체 (커서로 다음 페이지 이어 받기 필요)
-//   const response = await apiClient.get('/api/v1/archives', { params: { sort, size: 50 } });
-//   return response.data.data.items;
+// 한 번에 받을 최대 개수 (백엔드 최대 50)
+const PAGE_SIZE = 50;
+
+// 공통 응답({ success, code, message, data })에서 data만 꺼내기
+const getData = async <T>(url: string, params?: object) =>
+  (await apiClient.get<ApiResponse<T>>(url, { params })).data.data;
+
+// ---------------- 백엔드 응답 (스웨거, 화면에 쓰는 필드만) ----------------
+
+interface ArchivePageResponse {
+  items: { dreamId: number; dreamedAt: string; title: string | null }[];
+  hasNext: boolean;
+  nextCursor?: string;
+}
+
+interface WorldCompositionResponse {
+  worldId: number;
+  compositionRevision: number;
+  status: WorldComposition['status'];
+  failureCode?: string | null;
+  attemptId: string | null;
+  jobVersion: number;
+}
+
+interface WorldEntryPageResponse {
+  items: {
+    dreamId: number;
+    bridgeBefore: string | null; // 앞 꿈과 이어 주는 문장 (첫 꿈 · 끊긴 자리는 없음)
+    sections: { sequence: number; content: string }[];
+    connectionGap: boolean; // 앞 꿈이 삭제돼서 연결이 끊긴 자리
+  }[];
+  hasNext: boolean;
+  nextCursor?: string;
+}
+
+interface SelectedDreamPageResponse {
+  items: { dreamId: number; dreamedAt: string; title: string | null }[];
+  hasNext: boolean;
+  nextCursor?: string;
+}
+
+interface WorldSummaryResponse {
+  status: WorldSummary['status'];
+  generatedTitle: string | null;
+  commonKeywords: { keyword: string }[];
+  recurringEmotions: { label: string }[];
+  hasPreviousResult: boolean;
+}
+
+interface WorldImageResponse {
+  worldId: number;
+  imageVersion: number;
+  status: WorldImage['status'];
+  failureCode?: string | null;
+  hasPreviousResult: boolean;
+  nextRegenerationCost: number | null;
+}
+
+const toComposition = (data: WorldCompositionResponse): WorldComposition => ({
+  worldId: data.worldId,
+  status: data.status,
+  compositionRevision: data.compositionRevision,
+  attemptId: data.attemptId,
+  jobVersion: data.jobVersion,
+  failureCode: data.failureCode ?? undefined,
+});
+
+const toWorldImage = (data: WorldImageResponse): WorldImage => ({
+  worldId: data.worldId,
+  status: data.status,
+  imageVersion: data.imageVersion,
+  failureCode: data.failureCode ?? undefined,
+  hasPreviousResult: data.hasPreviousResult,
+  nextRegenerationCost: data.nextRegenerationCost,
+});
+
+// ---------------- API ----------------
+
+// 연결할 꿈 목록 (감정 선택까지 끝낸 꿈, 다음 페이지가 없을 때까지 전부 받음)
 export const getConnectableDreams = async (sort: ConnectSort): Promise<ConnectableDream[]> => {
-  await wait();
-  return getConnectableDreamsMock(sort);
+  if (!USE_WORLD_API) {
+    await wait();
+    return getConnectableDreamsMock(sort);
+  }
+
+  const dreams: ConnectableDream[] = [];
+  let cursor: string | undefined;
+
+  do {
+    const page = await getData<ArchivePageResponse>('/api/v1/archives', {
+      sort,
+      size: PAGE_SIZE,
+      cursor,
+    });
+
+    dreams.push(
+      ...page.items.map(({ dreamId, dreamedAt, title }) => ({
+        dreamId,
+        dreamedAt,
+        title: title || UNTITLED_DREAM_TITLE,
+      })),
+    );
+    cursor = page.hasNext ? page.nextCursor : undefined;
+  } while (cursor);
+
+  return dreams;
 };
 
-// 세계관(꿈 연결) 폴더 만들기
-// TODO: POST /api/v1/worlds  body { name }
+// 세계관(꿈 연결) 폴더 만들기 (POST /api/v1/worlds)
 export const createWorld = async (name: string): Promise<WorldFolder> => {
-  await wait();
-  return createWorldMock(name);
+  if (!USE_WORLD_API) {
+    await wait();
+    return createWorldMock(name);
+  }
+
+  const { data } = await apiClient.post<ApiResponse<WorldFolder>>('/api/v1/worlds', { name });
+  return data.data;
 };
 
-// 세계관 폴더 정보 (최신 revision 확인용)
-// TODO: GET /api/v1/worlds/{worldId}
+// 세계관 폴더 정보 (최신 revision 확인용, GET /api/v1/worlds/{worldId})
 export const getWorld = async (worldId: number): Promise<WorldFolder> => {
-  await wait(100);
-  const world = getWorldMock(worldId);
-  if (!world) throw new Error('연결한 꿈을 찾지 못했어요.');
-  return world;
+  if (!USE_WORLD_API) {
+    await wait(100);
+    const world = getWorldMock(worldId);
+    if (!world) throw new Error('연결한 꿈을 찾지 못했어요.');
+    return world;
+  }
+
+  return getData<WorldFolder>(`/api/v1/worlds/${worldId}`);
 };
 
 // 세계관에 꿈 넣기 (한 번에 하나씩, 매번 최신 revision 전달)
-// TODO: PUT /api/v1/worlds/{worldId}/dreams/{dreamId}  body { revision }
+// PUT /api/v1/worlds/{worldId}/dreams/{dreamId}  body { revision }
 export const addDreamToWorld = async (
   worldId: number,
   dreamId: number,
   revision: number,
 ): Promise<WorldFolder> => {
-  await wait(100);
-  const world = addDreamToWorldMock(worldId, dreamId, revision);
-  if (!world) throw new Error('꿈을 연결 목록에 넣지 못했어요.');
-  return world;
+  if (!USE_WORLD_API) {
+    await wait(100);
+    const world = addDreamToWorldMock(worldId, dreamId, revision);
+    if (!world) throw new Error('꿈을 연결 목록에 넣지 못했어요.');
+    return world;
+  }
+
+  const { data } = await apiClient.put<ApiResponse<WorldFolder>>(
+    `/api/v1/worlds/${worldId}/dreams/${dreamId}`,
+    { revision },
+  );
+  return data.data;
 };
 
 // 세계관에서 꿈 빼기 (원본 꿈은 지워지지 않음)
-// TODO: DELETE /api/v1/worlds/{worldId}/dreams/{dreamId}?revision={revision}
+// DELETE /api/v1/worlds/{worldId}/dreams/{dreamId}?revision={revision}
 export const removeDreamFromWorld = async (
   worldId: number,
   dreamId: number,
   revision: number,
 ): Promise<WorldFolder> => {
-  await wait(100);
-  const world = removeDreamFromWorldMock(worldId, dreamId, revision);
-  if (!world) throw new Error('꿈을 연결 목록에서 빼지 못했어요.');
-  return world;
+  if (!USE_WORLD_API) {
+    await wait(100);
+    const world = removeDreamFromWorldMock(worldId, dreamId, revision);
+    if (!world) throw new Error('꿈을 연결 목록에서 빼지 못했어요.');
+    return world;
+  }
+
+  const { data } = await apiClient.delete<ApiResponse<WorldFolder>>(
+    `/api/v1/worlds/${worldId}/dreams/${dreamId}`,
+    { params: { revision } },
+  );
+  return data.data;
 };
 
 // 연결 생성 시작 (접수만 하고 바로 응답, 완료 여부는 getComposition으로 확인)
 // 제한시간 초과 시 다시 보내지 말고 getComposition으로 상태 확인 (useConnectDreams)
-// TODO: POST /api/v1/worlds/{worldId}/composition  body { folderRevision, compositionRevision }
+// POST /api/v1/worlds/{worldId}/composition  body { folderRevision, compositionRevision } (크레딧 사용 없음)
+// 원본 꿈 삭제로 끊긴 연결을 다시 이을 때("내용 재생성")도 같은 API 사용
 export const startComposition = async (
   worldId: number,
-  // 실제 API에서 사용
-  _folderRevision: number,
-  _compositionRevision: number,
-): Promise<WorldComposition> => {
-  await wait();
-  const composition = startCompositionMock(worldId);
-  if (!composition) throw new Error('꿈 연결을 시작하지 못했어요.');
-  return composition;
+  folderRevision: number,
+  compositionRevision: number,
+): Promise<void> => {
+  if (!USE_WORLD_API) {
+    await wait();
+    if (!startCompositionMock(worldId)) throw new Error('꿈 연결을 시작하지 못했어요.');
+    return;
+  }
+
+  await apiClient.post(`/api/v1/worlds/${worldId}/composition`, {
+    folderRevision,
+    compositionRevision,
+  });
 };
 
-// 연결 생성 상태 확인
-// TODO: GET /api/v1/worlds/{worldId}/composition
+// 연결 생성 상태 확인 (GET /api/v1/worlds/{worldId}/composition)
 export const getComposition = async (worldId: number): Promise<WorldComposition> => {
-  await wait(100);
-  const composition = getCompositionMock(worldId);
-  if (!composition) throw new Error('꿈 연결 상태를 확인하지 못했어요.');
-  return composition;
+  if (!USE_WORLD_API) {
+    await wait(100);
+    const composition = getCompositionMock(worldId);
+    if (!composition) throw new Error('꿈 연결 상태를 확인하지 못했어요.');
+    return composition;
+  }
+
+  return toComposition(
+    await getData<WorldCompositionResponse>(`/api/v1/worlds/${worldId}/composition`),
+  );
 };
 
-// 연결 결과 (폴더 이름 · 스토리 · 연결된 꿈)
-// TODO: 백엔드 API 연동 시 아래 API 응답을 합쳐서 반환
-//   - 폴더 이름: GET /api/v1/worlds/{worldId} 의 name
-//   - 스토리: GET /api/v1/worlds/{worldId}/composition/entries 의 각 꿈 bridgeBefore + sections[].content
-//     (원본 꿈을 지우면 그 꿈 이야기와 앞뒤 연결 문장이 빠지고 connectionGap=true, TODO: 끊긴 자리 표시는 디자인 확인 중)
-//   - 연결된 꿈: GET /api/v1/worlds/{worldId}/dreams 의 items (dreamId · dreamedAt · title)
-//   - 완성본에 남은 꿈 수: entries 의 서로 다른 dreamId 개수 (이미지 생성 가능 여부 판단, 선택한 꿈 수와 다름)
+// 완성본 이야기 전체 (GET /api/v1/worlds/{worldId}/composition/entries, 날짜순)
+const getAllEntries = async (worldId: number) => {
+  const entries: WorldEntryPageResponse['items'] = [];
+  let cursor: string | undefined;
+
+  do {
+    const page = await getData<WorldEntryPageResponse>(
+      `/api/v1/worlds/${worldId}/composition/entries`,
+      { size: PAGE_SIZE, cursor },
+    );
+    entries.push(...page.items);
+    cursor = page.hasNext ? page.nextCursor : undefined;
+  } while (cursor);
+
+  return entries;
+};
+
+// 연결된 꿈 전체 (GET /api/v1/worlds/{worldId}/dreams, 날짜순)
+const getAllSelectedDreams = async (worldId: number) => {
+  const dreams: ConnectableDream[] = [];
+  let cursor: string | undefined;
+
+  do {
+    const page = await getData<SelectedDreamPageResponse>(`/api/v1/worlds/${worldId}/dreams`, {
+      size: PAGE_SIZE,
+      cursor,
+    });
+    dreams.push(
+      ...page.items.map(({ dreamId, dreamedAt, title }) => ({
+        dreamId,
+        dreamedAt,
+        title: title || UNTITLED_DREAM_TITLE,
+      })),
+    );
+    cursor = page.hasNext ? page.nextCursor : undefined;
+  } while (cursor);
+
+  return dreams;
+};
+
+// 연결 결과 (폴더 이름 · 스토리 · 연결된 꿈 · 완성본에 남은 꿈 수)
+// - 스토리: 꿈마다 한 문단 (앞 꿈과 이어 주는 문장 + 그 꿈 이야기)
+//   원본 꿈을 지우면 그 꿈 이야기와 앞뒤 연결 문장이 빠짐 (끊긴 자리는 따로 표시하지 않음, 디자이너 확인)
+// - 완성본에 남은 꿈 수: entries 의 서로 다른 dreamId 개수 (이미지 생성 가능 여부 판단, 선택한 꿈 수와 다름)
 export const getWorldResult = async (worldId: number): Promise<WorldResult> => {
-  await wait();
-  const result = getWorldResultMock(worldId);
-  if (!result) throw new Error('연결 결과를 찾지 못했어요.');
-  return result;
+  if (!USE_WORLD_API) {
+    await wait();
+    const result = getWorldResultMock(worldId);
+    if (!result) throw new Error('연결 결과를 찾지 못했어요.');
+    return result;
+  }
+
+  const [world, entries, dreams] = await Promise.all([
+    getWorld(worldId),
+    getAllEntries(worldId),
+    getAllSelectedDreams(worldId),
+  ]);
+
+  const story = entries.map(({ bridgeBefore, sections }) =>
+    [
+      bridgeBefore,
+      ...[...sections].sort((a, b) => a.sequence - b.sequence).map(({ content }) => content),
+    ]
+      .filter(Boolean)
+      .join(' '),
+  );
+
+  return {
+    worldId,
+    name: world.name,
+    story,
+    dreams,
+    composedDreamCount: new Set(entries.map(({ dreamId }) => dreamId)).size,
+  };
 };
 
 // 세계관 요약 (AI 제목 · 공통 키워드 · 반복되는 감정)
 // 연결이 완성되면 서버가 자동으로 만들기 시작함 (조회는 AI 호출 · 토큰 사용 없음)
-// TODO: 백엔드 API 연동 시 Mock 부분을 지우고 아래 코드로 교체
-//   const { data } = (await apiClient.get(`/api/v1/worlds/${worldId}/summary`)).data;
-//   그 뒤 아래 return과 같은 방식으로 필요한 값만 꺼내서 반환
-//   (keyword · label 이름 주의: 월별 통계의 name · emotion과 다름, 백엔드 #107)
+// GET /api/v1/worlds/{worldId}/summary (keyword · label 이름 주의: 월별 통계의 name · emotion과 다름, 백엔드 #107)
 export const getWorldSummary = async (worldId: number): Promise<WorldSummary> => {
-  await wait(100);
-  const data = getWorldSummaryMock(worldId);
-  if (!data) throw new Error('세계관 요약을 찾지 못했어요.');
+  let data: WorldSummaryResponse;
+
+  if (!USE_WORLD_API) {
+    await wait(100);
+    const mock = getWorldSummaryMock(worldId);
+    if (!mock) throw new Error('세계관 요약을 찾지 못했어요.');
+    data = mock;
+  } else {
+    data = await getData<WorldSummaryResponse>(`/api/v1/worlds/${worldId}/summary`);
+  }
 
   return {
     status: data.status,
@@ -140,62 +345,86 @@ export const getWorldSummary = async (worldId: number): Promise<WorldSummary> =>
 
 // 세계관 요약 생성 요청 (무료, 같은 요청이 진행 중이면 서버가 이어서 처리)
 // 요약이 한 번도 만들어지지 않은 세계관(NOT_GENERATED)일 때 사용, 접수 후 getWorldSummary로 상태 확인
-// TODO: POST /api/v1/worlds/{worldId}/summary (요청 본문 없음)
+// POST /api/v1/worlds/{worldId}/summary (요청 본문 없음)
 export const requestWorldSummary = async (worldId: number): Promise<void> => {
-  await wait(100);
-  if (!requestWorldSummaryMock(worldId)) throw new Error('세계관 요약을 요청하지 못했어요.');
+  if (!USE_WORLD_API) {
+    await wait(100);
+    if (!requestWorldSummaryMock(worldId)) throw new Error('세계관 요약을 요청하지 못했어요.');
+    return;
+  }
+
+  await apiClient.post(`/api/v1/worlds/${worldId}/summary`);
 };
 
-// 세계관 폴더 삭제 (연결 중단 시 사용, 원본 꿈은 지워지지 않음)
-// TODO: DELETE /api/v1/worlds/{worldId}?revision={revision}
-export const deleteWorld = async (
-  worldId: number,
-  // 실제 API에서 사용
-  _revision: number,
-): Promise<void> => {
-  await wait(100);
-  deleteWorldMock(worldId);
+// 세계관 폴더 삭제 (연결 중단 · 보관함에서 삭제, 원본 꿈은 지워지지 않음)
+// DELETE /api/v1/worlds/{worldId}?revision={revision}
+export const deleteWorld = async (worldId: number, revision: number): Promise<void> => {
+  if (!USE_WORLD_API) {
+    await wait(100);
+    deleteWorldMock(worldId);
+    return;
+  }
+
+  await apiClient.delete(`/api/v1/worlds/${worldId}`, { params: { revision } });
 };
 
-// 보유 토큰(크레딧) 수
-// TODO: GET /api/v1/credits/balance 의 available
+// 보유 토큰(크레딧) 수 (GET /api/v1/credits/balance 의 available)
 export const getCreditBalance = async (): Promise<number> => {
-  await wait(100);
-  return getCreditBalanceMock();
+  if (!USE_WORLD_API) {
+    await wait(100);
+    return getCreditBalanceMock();
+  }
+
+  return (await getData<{ available: number }>('/api/v1/credits/balance')).available;
 };
 
 // 세계관 이미지 생성 시작 (접수만 하고 바로 응답, 완료 여부는 getWorldImage로 확인)
-// TODO: POST /api/v1/worlds/{worldId}/image  body { compositionRevision, style }
-//   style은 사용자가 화풍 4종 중 고른 key (GET /api/v1/image-options 의 styles 에 있는 값만 사용)
-//   - surrealism · geometric-cubism · expressive-brushwork · modern-pop-art
-//   - 화풍 선택 화면은 디자인 요청 중, mood는 보내지 않음
+// POST /api/v1/worlds/{worldId}/image  body { compositionRevision, style, (재생성이면 regenerate · imageVersion) }
+//   - style: 화풍 4종 key (surrealism · geometric-cubism · expressive-brushwork · modern-pop-art), mood는 보내지 않음
+//   - 이전에 성공한 이미지가 있으면 재생성 (최신 imageVersion 함께 전달)
 //   응답이 15초를 넘길 수 있음 → 제한시간 초과 시 다시 보내지 말고 getWorldImage로 상태 확인 (useCreateWorldImage)
 export const createWorldImage = async (
   worldId: number,
-  // 실제 API에서 사용
-  _compositionRevision: number,
-): Promise<WorldImage> => {
-  await wait();
-  const image = createWorldImageMock(worldId);
-  if (!image) throw new Error('이미지를 만들지 못했어요.');
-  return image;
+  compositionRevision: number,
+  style: string,
+  previous: WorldImage | null,
+): Promise<void> => {
+  if (!USE_WORLD_API) {
+    await wait();
+    if (!createWorldImageMock(worldId)) throw new Error('이미지를 만들지 못했어요.');
+    return;
+  }
+
+  const isRegeneration = Boolean(
+    previous && (previous.status === 'COMPLETED' || previous.hasPreviousResult),
+  );
+
+  await apiClient.post(`/api/v1/worlds/${worldId}/image`, {
+    compositionRevision,
+    style,
+    ...(isRegeneration && previous && { regenerate: true, imageVersion: previous.imageVersion }),
+  });
 };
 
-// 세계관 이미지 생성 상태 확인
-// TODO: GET /api/v1/worlds/{worldId}/image
+// 세계관 이미지 생성 상태 확인 (GET /api/v1/worlds/{worldId}/image)
 export const getWorldImage = async (worldId: number): Promise<WorldImage> => {
-  await wait(100);
-  const image = getWorldImageMock(worldId);
-  if (!image) throw new Error('이미지 상태를 확인하지 못했어요.');
-  return image;
+  if (!USE_WORLD_API) {
+    await wait(100);
+    const image = getWorldImageMock(worldId);
+    if (!image) throw new Error('이미지 상태를 확인하지 못했어요.');
+    return image;
+  }
+
+  return toWorldImage(await getData<WorldImageResponse>(`/api/v1/worlds/${worldId}/image`));
 };
 
 // 완성된 세계관 이미지 주소 (최대 5분 동안 유효한 임시 주소)
-// TODO: GET /api/v1/worlds/{worldId}/image/download-url 의 url
-export const getWorldImageUrl = async (
-  // 실제 API에서 사용
-  _worldId: number,
-): Promise<string> => {
-  await wait(100);
-  return getWorldImageUrlMock();
+// GET /api/v1/worlds/{worldId}/image/download-url 의 url
+export const getWorldImageUrl = async (worldId: number): Promise<string> => {
+  if (!USE_WORLD_API) {
+    await wait(100);
+    return getWorldImageUrlMock();
+  }
+
+  return (await getData<{ url: string }>(`/api/v1/worlds/${worldId}/image/download-url`)).url;
 };

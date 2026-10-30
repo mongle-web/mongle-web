@@ -1,9 +1,7 @@
 import type { ApiResponse } from '@/api/authApi';
 import { apiClient } from '@/api/client';
-import {
-  deleteWorldMock,
-  getWorldListMock,
-} from '@/features/dream-connect/mocks/dreamConnectMockData';
+import { deleteWorld, USE_WORLD_API } from '@/features/dream-connect/api/dreamConnectApi';
+import { getWorldListMock } from '@/features/dream-connect/mocks/dreamConnectMockData';
 import { UNTITLED_DREAM_TITLE } from '@/features/dream-detail/types/dreamDetail';
 import type {
   ArchiveDream,
@@ -43,6 +41,7 @@ interface ArchivePageResponse {
 
 // 한 번에 받을 최대 개수 (백엔드 최대 50)
 const ARCHIVE_PAGE_SIZE = 50;
+const WORLD_PAGE_SIZE = 50;
 
 // 기록한 꿈 목록 (감정 선택까지 끝낸 꿈, 최신 날짜순)
 // 검색은 화면에서 제목 · 키워드로 거르므로 다음 페이지가 없을 때까지 전부 받는다
@@ -79,20 +78,62 @@ export const deleteRecordedDream = async ({ id, revision }: RecordedDream): Prom
   await apiClient.delete(`/api/v1/dreams/${id}`, { params: { revision } });
 };
 
-// 연결된 꿈 목록 (= 꿈 연결하기로 만든 세계관 목록, Mock도 꿈 연결하기와 같은 데이터 사용)
-// TODO: 백엔드 API 연동 시 Mock 부분을 지우고 아래 API로 교체 (beforeId로 다음 페이지 이어 받기 필요)
-//   const items = (await apiClient.get('/api/v1/worlds', { params: { size: 50 } })).data.data.items;
-//   그 뒤 아래와 같은 방식으로 카드에 필요한 값만 꺼내서 반환
-//   - 제목: summary.generatedTitle (AI 제목, 아직 없으면 폴더 name)
-//   - "첫 꿈 외 N개": representativeDream.title · composedDreamCount
-//   - 키워드: summary.commonKeywords[].keyword
-//   - 빈 폴더(완성본에 꿈이 없음)도 내려오므로 composedDreamCount가 0이면 뺌 (백엔드에 기준 확인 중)
+// 세계관 목록 응답 (GET /api/v1/worlds, 카드에 쓰는 필드만)
+interface WorldFolderPageResponse {
+  items: {
+    worldId: number;
+    name: string;
+    revision: number; // 삭제 API에 넘기는 최신 버전
+    createdAt: string;
+    composedDreamCount: number; // 완성본에 남은 꿈 수
+    representativeDream: { title: string | null } | null; // 가장 오래된 꿈
+    summary: { generatedTitle: string | null; commonKeywords: { keyword: string }[] } | null;
+  }[];
+  hasNext: boolean;
+  nextBeforeId?: number;
+}
+
+// 연결된 꿈 목록 (= 꿈 연결하기로 만든 세계관 목록, Mock은 꿈 연결하기와 같은 데이터 사용)
+// - 제목: summary.generatedTitle (AI 제목, 아직 없으면 폴더 name)
+// - "첫 꿈 외 N개": representativeDream.title · composedDreamCount
+// - 키워드: summary.commonKeywords[].keyword
+// - 완성본에 꿈이 없는 폴더(composedDreamCount 0)는 목록에서 뺌 (백엔드 확인)
+const getWorldFolders = async (): Promise<WorldFolderPageResponse['items']> => {
+  if (!USE_WORLD_API) {
+    await wait();
+    return getWorldListMock();
+  }
+
+  const folders: WorldFolderPageResponse['items'] = [];
+  let beforeId: number | undefined;
+
+  do {
+    const { data } = await apiClient.get<ApiResponse<WorldFolderPageResponse>>('/api/v1/worlds', {
+      params: { size: WORLD_PAGE_SIZE, beforeId },
+    });
+    const { items, hasNext, nextBeforeId } = data.data;
+
+    folders.push(...items);
+    beforeId = hasNext ? nextBeforeId : undefined;
+  } while (beforeId !== undefined);
+
+  return folders;
+};
+
 export const getConnectedDreams = async (): Promise<ConnectedDream[]> => {
-  await wait();
+  const folders = await getWorldFolders();
 
   return sortByLatest(
-    getWorldListMock().flatMap(
-      ({ worldId, name, createdAt, composedDreamCount, representativeDream, summary }) => {
+    folders.flatMap(
+      ({
+        worldId,
+        name,
+        revision,
+        createdAt,
+        composedDreamCount,
+        representativeDream,
+        summary,
+      }) => {
         if (composedDreamCount === 0 || !representativeDream) return [];
 
         return {
@@ -100,8 +141,9 @@ export const getConnectedDreams = async (): Promise<ConnectedDream[]> => {
           date: toLocalDate(createdAt),
           title: summary?.generatedTitle || name,
           keywords: summary?.commonKeywords.map(({ keyword }) => keyword) ?? [],
-          firstDreamTitle: representativeDream.title,
+          firstDreamTitle: representativeDream.title || UNTITLED_DREAM_TITLE,
           connectedDreamCount: composedDreamCount,
+          revision,
         };
       },
     ),
@@ -109,8 +151,6 @@ export const getConnectedDreams = async (): Promise<ConnectedDream[]> => {
 };
 
 // 연결된 꿈 삭제 (세계관 폴더 삭제, 원본 꿈은 지워지지 않음)
-// TODO: DELETE /api/v1/worlds/{worldId}?revision={revision} (revision은 목록 응답 값)
-export const deleteConnectedDream = async (worldId: number): Promise<void> => {
-  await wait();
-  deleteWorldMock(worldId);
-};
+// DELETE /api/v1/worlds/{worldId}?revision={revision} (Mock 여부는 꿈 연결하기 API와 같은 기준)
+export const deleteConnectedDream = ({ id, revision }: ConnectedDream): Promise<void> =>
+  deleteWorld(id, revision);
