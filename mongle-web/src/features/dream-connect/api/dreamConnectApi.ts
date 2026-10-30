@@ -108,7 +108,9 @@ export const getComposition = async (worldId: number): Promise<WorldComposition>
 // TODO: 백엔드 API 연동 시 아래 API 응답을 합쳐서 반환
 //   - 폴더 이름: GET /api/v1/worlds/{worldId} 의 name
 //   - 스토리: GET /api/v1/worlds/{worldId}/composition/entries 의 각 꿈 bridgeBefore + sections[].content
+//     (원본 꿈을 지우면 그 꿈 이야기와 앞뒤 연결 문장이 빠지고 connectionGap=true, TODO: 끊긴 자리 표시는 디자인 확인 중)
 //   - 연결된 꿈: GET /api/v1/worlds/{worldId}/dreams 의 items (dreamId · dreamedAt · title)
+//   - 완성본에 남은 꿈 수: entries 의 서로 다른 dreamId 개수 (이미지 생성 가능 여부 판단, 선택한 꿈 수와 다름)
 export const getWorldResult = async (worldId: number): Promise<WorldResult> => {
   await wait();
   const result = getWorldResultMock(worldId);

@@ -58,7 +58,10 @@ function ArchiveDreamCard({ dream, connectedDreams, onClick, onDelete }: Archive
         {connectedDreams && (
           <p className="text-[14px] leading-[1.5] font-medium break-keep text-b-400">
             <span className="font-semibold text-b-300">{connectedDreams.firstTitle}</span>
-            {` 외 ${connectedDreams.count - 1}개의 꿈을 연결했어요`}
+            {/* 원본 꿈을 지워 1개만 남으면 "외 0개" 대신 백엔드 권장 문구 */}
+            {connectedDreams.count > 1
+              ? ` 외 ${connectedDreams.count - 1}개의 꿈을 연결했어요`
+              : '의 꿈이 남아 있어요'}
           </p>
         )}
       </div>
