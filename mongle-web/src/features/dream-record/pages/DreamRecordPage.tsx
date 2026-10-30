@@ -2,14 +2,20 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 
-import { FlowModal, Glow, PrimaryButton, SecondaryButton, TokenCost } from '@/components/common';
+import {
+  CreditCharge,
+  FlowModal,
+  Glow,
+  PrimaryButton,
+  SecondaryButton,
+  TokenCost,
+  TokenShortageModal,
+} from '@/components/common';
 
 import DreamImage from '@/components/common/DreamImage';
 import DreamDatePicker from '../components/DreamDatePicker';
 import EmotionSelector from '../components/EmotionSelector';
-import DreamCharge from '../components/DreamCharge';
 import ImageStyleSelector from '../components/ImageStyleSelector';
-import DreamTokenShortageModal from '../components/DreamTokenShortageModal';
 
 import { MAX_LENGTH, parseRecordDate, toDateString } from '../utils/dreamDraft';
 import {
@@ -323,8 +329,8 @@ function DreamRecordFlow() {
         )}
 
         {screen === 'charge' && flow.dream && (
-          <DreamCharge
-            dreamId={flow.dream.dreamId}
+          <CreditCharge
+            storageKey={`mongle:payment-pending:${flow.dream.dreamId}`}
             cost={cost ?? 0}
             canGenerate={flow.canGenerate && (flow.screen === 'result' || validChoice)}
             onContinue={continueAfterPayment}
@@ -547,7 +553,7 @@ function DreamRecordFlow() {
       )}
 
       {flow.modal === 'tokens' && (
-        <DreamTokenShortageModal
+        <TokenShortageModal
           required={flow.tokenRequirement ?? cost ?? INITIAL_DREAM_IMAGE_COST}
           available={tokens}
           onClose={() => {

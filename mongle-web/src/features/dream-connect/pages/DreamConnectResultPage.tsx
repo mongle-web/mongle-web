@@ -239,9 +239,8 @@ function DreamConnectResultPage() {
       {shortage && (
         <TokenShortageModal
           required={shortage.required}
-          owned={shortage.owned}
+          available={shortage.owned}
           onCharge={() => navigate(`/connect/${worldId}/style?view=charge`)}
-          onLater={() => setShortage(null)}
           onClose={() => setShortage(null)}
         />
       )}

@@ -4,12 +4,18 @@ import { useNavigate } from 'react-router-dom';
 interface BackHeaderProps {
   title: string;
   rightSlot?: ReactNode;
+  onBack?: () => void; // 뒤로 가기 대신 할 동작 (없으면 이전 화면으로)
 }
 
-function BackHeader({ title, rightSlot }: BackHeaderProps) {
+function BackHeader({ title, rightSlot, onBack }: BackHeaderProps) {
   const navigate = useNavigate();
 
   const handleBack = () => {
+    if (onBack) {
+      onBack();
+      return;
+    }
+
     navigate(-1);
   };
 
