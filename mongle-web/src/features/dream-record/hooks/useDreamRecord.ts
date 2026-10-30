@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -9,6 +10,7 @@ import {
   emotionCodes,
   errorCode,
   errorMessage,
+  INITIAL_DREAM_IMAGE_COST,
   type Dream,
 } from '../api/dreamRecordApi';
 
@@ -19,6 +21,7 @@ import {
   type DreamDraft,
   type Emotion,
 } from '../utils/dreamDraft';
+import { readImageIntent } from '../utils/imageIntent';
 
 type Screen = 'text' | 'emotion' | 'image' | 'complete';
 
@@ -55,7 +58,6 @@ export function useDreamRecord() {
 
   const [modal, setModal] = useState<'tokens' | null>(null);
   const [style, setStyle] = useState('');
-  const [mood, setMood] = useState('');
   const [waitingImage, setWaitingImage] = useState(false);
 
   const completed = dream?.recordStatus === 'COMPLETED';
@@ -90,7 +92,6 @@ export function useDreamRecord() {
         throw new Error('꿈을 기록하려면 먼저 로그인해 주세요.');
       }
 
-      // URL의 ID만 신뢰하지 않고 서버에서 소유권·상태·최신 revision을 확인한다.
       const currentId = recordRef.current?.dreamId ?? initial.id;
 
       const saved = currentId
@@ -102,7 +103,9 @@ export function useDreamRecord() {
       }
 
       if (saved && saved.dreamedAt !== initial.date) {
-        throw new Error('기록 날짜와 요청한 날짜가 달라요. 보관함에서 기록을 다시 열어 주세요.');
+        throw new Error(
+          '기록 날짜와 요청한 날짜가 달라요. 보관함에서 기록을 다시 열어 주세요.',
+        );
       }
 
       recordRef.current = saved;
@@ -146,23 +149,26 @@ export function useDreamRecord() {
     };
   }, [initial, restoreVersion]);
 
-  // 상태 조회만 반복한다. 실패한 생성 요청은 자동으로 재전송하지 않는다.
   const generation = useQuery({
     queryKey: ['dream-record', id, 'generation'],
     queryFn: ({ signal }) => api.generation(id!, signal),
     enabled: ready && completed,
     retry: false,
     refetchInterval: (query) =>
-      !query.state.error && ['QUEUED', 'PROCESSING'].includes(query.state.data?.status ?? '')
+      !query.state.error &&
+      ['QUEUED', 'PROCESSING'].includes(query.state.data?.status ?? '')
         ? 2000
         : false,
   });
 
-  const generated = generation.data?.status === 'COMPLETED' && !generation.data.sourceChanged;
+  const generated =
+    generation.data?.status === 'COMPLETED' &&
+    !generation.data.sourceChanged;
 
   const analysis = useQuery({
     queryKey: ['dream-record', id, 'analysis', generation.data?.analysisId],
-    queryFn: ({ signal }) => api.analysis(generation.data!.analysisId!, signal),
+    queryFn: ({ signal }) =>
+      api.analysis(generation.data!.analysisId!, signal),
     enabled: ready && generated && !!generation.data?.analysisId,
     retry: false,
   });
@@ -181,28 +187,41 @@ export function useDreamRecord() {
     retry: false,
     refetchInterval: (query) =>
       !query.state.error &&
-      (waitingImage || ['PENDING', 'PROCESSING'].includes(query.state.data?.status ?? ''))
+      (
+        waitingImage ||
+        ['PENDING', 'PROCESSING'].includes(query.state.data?.status ?? '')
+      )
         ? 2000
         : false,
   });
 
-  const hasImage = image.data?.status === 'COMPLETED' || image.data?.hasPreviousResult === true;
+  const hasImage =
+    image.data?.status === 'COMPLETED' ||
+    image.data?.hasPreviousResult === true;
 
   const download = useQuery({
-    queryKey: ['dream-record', id, 'download', image.data?.imageId, image.data?.imageVersion],
+    queryKey: [
+      'dream-record',
+      id,
+      'download',
+      image.data?.imageId,
+      image.data?.imageVersion,
+    ],
     queryFn: ({ signal }) => api.download(image.data!.imageId, signal),
     enabled: ready && hasImage,
     retry: false,
 
-    // 임시 URL 만료 전에 주소만 갱신한다. 이미지 생성·과금을 다시 요청하지 않는다.
     refetchInterval: (query) => {
       if (query.state.error || !query.state.data) {
         return false;
       }
 
-      const remaining = Date.parse(query.state.data.expiresAt) - Date.now() - 30000;
+      const remaining =
+        Date.parse(query.state.data.expiresAt) - Date.now() - 30000;
 
-      return Number.isFinite(remaining) ? Math.max(1000, remaining) : 60000;
+      return Number.isFinite(remaining)
+        ? Math.max(1000, remaining)
+        : 60000;
     },
 
     gcTime: 0,
@@ -222,18 +241,37 @@ export function useDreamRecord() {
     retry: false,
   });
 
-  const selectedStyle = style || image.data?.style || options.data?.styles[0] || '';
-  const selectedMood = mood;
+  const restoredStyle = id
+    ? (readImageIntent(id)?.style ?? '')
+    : '';
+
+  const selectedStyle =
+    style ||
+    restoredStyle ||
+    image.data?.resultStyle ||
+    image.data?.style ||
+    '';
 
   const imageBusy =
-    waitingImage || image.data?.status === 'PENDING' || image.data?.status === 'PROCESSING';
+    waitingImage ||
+    image.data?.status === 'PENDING' ||
+    image.data?.status === 'PROCESSING';
 
-  const screen = baseScreen === 'image' && hasImage ? 'result' : baseScreen;
+  const screen =
+    baseScreen === 'image' && hasImage
+      ? 'result'
+      : baseScreen;
 
-  const cost = hasImage ? (image.data?.nextRegenerationCost ?? null) : 3;
+  const cost = hasImage
+    ? (image.data?.nextRegenerationCost ?? null)
+    : INITIAL_DREAM_IMAGE_COST;
+
   const tokens = balance.data?.available ?? null;
 
-  async function run(action: () => Promise<void>, saving = false) {
+  async function run(
+    action: () => Promise<void>,
+    saving = false,
+  ) {
     if (lock.current || !ready) {
       return;
     }
@@ -248,7 +286,6 @@ export function useDreamRecord() {
       if (mounted.current) {
         setMessage(errorMessage(error));
 
-        // 저장 응답이 불확실하면 자동저장을 멈추고 명시적으로 복구한다.
         if (saving) {
           setSaveError(true);
         }
@@ -266,7 +303,9 @@ export function useDreamRecord() {
     let current = recordRef.current;
 
     if (current?.recordStatus === 'COMPLETED') {
-      throw new Error('이미 저장이 완료된 기록이에요. 보관함에서 수정해 주세요.');
+      throw new Error(
+        '이미 저장이 완료된 기록이에요. 보관함에서 수정해 주세요.',
+      );
     }
 
     if (!current || current.originalText !== content) {
@@ -296,17 +335,25 @@ export function useDreamRecord() {
     }, 800);
 
     return () => clearTimeout(timer);
-
-    // 저장 시점의 원문과 recordRef의 최신 revision을 사용한다.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft.content, ready, busy, saveError, completed, baseScreen, dream?.originalText]);
+  }, [
+    draft.content,
+    ready,
+    busy,
+    saveError,
+    completed,
+    baseScreen,
+    dream?.originalText,
+  ]);
 
   function updateDraft(changes: Partial<DreamDraft>) {
     if (completed) {
       return;
     }
 
-    setDraft((current) => ({ ...current, ...changes }));
+    setDraft((current) => ({
+      ...current,
+      ...changes,
+    }));
   }
 
   function toggleEmotion(emotion: Emotion) {
@@ -314,7 +361,10 @@ export function useDreamRecord() {
       return;
     }
 
-    if (!draft.emotions.includes(emotion) && draft.emotions.length >= MAX_EMOTIONS) {
+    if (
+      !draft.emotions.includes(emotion) &&
+      draft.emotions.length >= MAX_EMOTIONS
+    ) {
       setMessage(`감정은 최대 ${MAX_EMOTIONS}개까지 선택할 수 있어요.`);
       return;
     }
@@ -331,7 +381,9 @@ export function useDreamRecord() {
 
   function handleNext() {
     if (saveError) {
-      setMessage('입력 내용을 복사한 뒤 서버 기록 다시 불러오기를 눌러 주세요.');
+      setMessage(
+        '입력 내용을 복사한 뒤 서버 기록 다시 불러오기를 눌러 주세요.',
+      );
       return;
     }
 
@@ -344,7 +396,10 @@ export function useDreamRecord() {
         if (mounted.current) {
           setScreen('emotion');
         }
-      } else if (baseScreen === 'emotion' && draft.emotions.length) {
+      } else if (
+        baseScreen === 'emotion' &&
+        draft.emotions.length
+      ) {
         const saved = recordRef.current;
 
         if (!saved) {
@@ -360,6 +415,10 @@ export function useDreamRecord() {
 
         await queryClient.invalidateQueries({
           queryKey: ['dream-record', result.dreamId],
+        });
+
+        await queryClient.invalidateQueries({
+          queryKey: ['dreams'],
         });
       }
     }, true);
@@ -380,11 +439,15 @@ export function useDreamRecord() {
 
   function selectDate(date: Date) {
     if (dream || busy || draft.content) {
-      setMessage('작성 중인 기록의 날짜는 변경할 수 없어요.');
+      setMessage(
+        '작성 중인 기록의 날짜는 변경할 수 없어요.',
+      );
       return;
     }
 
-    setParams({ date: toDateString(date) });
+    setParams({
+      date: toDateString(date),
+    });
   }
 
   function retryGeneration() {
@@ -405,36 +468,62 @@ export function useDreamRecord() {
   function handleGenerate() {
     void run(async () => {
       if (!id || !generated || !selectedStyle) {
-        throw new Error('분석·이야기 생성 완료와 이미지 스타일을 확인해 주세요.');
+        throw new Error(
+          '분석·이야기 생성 완료와 이미지 스타일을 확인해 주세요.',
+        );
       }
 
-      // 이전 요청의 응답을 놓쳤을 수 있으므로 POST 전에 상태부터 확인한다.
+      // 중복 생성 방지: 먼저 서버의 현재 이미지 상태를 확인한다.
       const existing = await api.image(id);
 
-      queryClient.setQueryData(['dream-record', id, 'image'], existing);
+      queryClient.setQueryData(
+        ['dream-record', id, 'image'],
+        existing,
+      );
 
-      if (existing?.status === 'PENDING' || existing?.status === 'PROCESSING') {
+      if (
+        existing?.status === 'PENDING' ||
+        existing?.status === 'PROCESSING'
+      ) {
         return;
       }
 
-      // 이미 성공한 요청을 실수로 재생성 요청으로 바꾸지 않는다.
-      if (!hasImage && (existing?.status === 'COMPLETED' || existing?.hasPreviousResult)) {
+      if (
+        !hasImage &&
+        (
+          existing?.status === 'COMPLETED' ||
+          existing?.hasPreviousResult
+        )
+      ) {
         return;
       }
 
+      // 백엔드 잔액 조회 결과를 기준으로 생성 가능 여부를 판단한다.
       const currentBalance = await api.balance();
 
-      queryClient.setQueryData(['dream-record', 'balance'], currentBalance);
+      queryClient.setQueryData(
+        ['dream-record', 'balance'],
+        currentBalance,
+      );
 
       if (currentBalance.spendingBlocked) {
-        throw new Error('결제 확인 중이라 지금은 이미지를 생성할 수 없어요.');
+        throw new Error(
+          '결제 확인 중이라 지금은 이미지를 생성할 수 없어요.',
+        );
       }
 
-      const needsRegeneration = existing?.status === 'COMPLETED' || existing?.hasPreviousResult;
-      const required = needsRegeneration ? existing?.nextRegenerationCost : 3;
+      const needsRegeneration =
+        existing?.status === 'COMPLETED' ||
+        existing?.hasPreviousResult;
+
+      const required = needsRegeneration
+        ? existing?.nextRegenerationCost
+        : INITIAL_DREAM_IMAGE_COST;
 
       if (required == null) {
-        throw new Error('재생성 비용을 확인할 수 없어요. 잠시 후 다시 조회해 주세요.');
+        throw new Error(
+          '재생성 비용을 확인할 수 없어요. 잠시 후 다시 조회해 주세요.',
+        );
       }
 
       if (currentBalance.available < required) {
@@ -448,22 +537,47 @@ export function useDreamRecord() {
       setWaitingImage(true);
 
       try {
-        const result = await api.generate(latest, selectedStyle, selectedMood, existing);
+        const result = await api.generate(
+          latest,
+          selectedStyle,
+          existing,
+        );
 
-        queryClient.setQueryData(['dream-record', id, 'image'], result);
+        queryClient.setQueryData(
+          ['dream-record', id, 'image'],
+          result,
+        );
       } catch (error) {
-        // 시간 초과가 생성 실패를 의미하지는 않으므로 GET으로 접수 상태를 확인한다.
+        // 네트워크 오류가 발생해도 POST를 자동 재전송하지 않는다.
+        // 먼저 GET으로 서버에서 실제 생성 상태를 확인한다.
         const reconciled = await image.refetch();
 
         if (
           reconciled.data &&
-          ['PENDING', 'PROCESSING', 'COMPLETED'].includes(reconciled.data.status)
+          [
+            'PENDING',
+            'PROCESSING',
+            'COMPLETED',
+          ].includes(reconciled.data.status)
         ) {
           return;
         }
 
-        if (errorCode(error).includes('CREDIT')) {
+        const code = errorCode(error);
+
+        // 실제 잔액 부족일 때만 충전 화면을 표시한다.
+        if (code === 'CREDIT_409_1') {
           setModal('tokens');
+        }
+
+        // 결제 확인 중 오류는 충전이 필요한 상황이 아니다.
+        // 서버의 잔액을 다시 조회하고 사용자에게 별도로 안내한다.
+        else if (code === 'CREDIT_409_5') {
+          await balance.refetch();
+
+          throw new Error(
+            '결제 확인이 진행 중이에요. 잠시 후 잔액과 이미지 생성 상태를 다시 확인해 주세요.',
+          );
         }
 
         throw error;
@@ -478,12 +592,25 @@ export function useDreamRecord() {
   }
 
   useEffect(() => {
-    if (image.data?.status === 'COMPLETED' || image.data?.status === 'FAILED') {
+    if (
+      image.data?.status === 'COMPLETED' ||
+      image.data?.status === 'FAILED'
+    ) {
       void queryClient.invalidateQueries({
         queryKey: ['dream-record', 'balance'],
       });
+
+      if (image.data.status === 'COMPLETED') {
+        void queryClient.invalidateQueries({
+          queryKey: ['dreams'],
+        });
+      }
     }
-  }, [image.data?.status, image.data?.imageVersion, queryClient]);
+  }, [
+    image.data?.status,
+    image.data?.imageVersion,
+    queryClient,
+  ]);
 
   const queryError =
     generation.error ||
@@ -500,7 +627,9 @@ export function useDreamRecord() {
     dream,
     ready,
     busy,
-    message: message || (queryError ? errorMessage(queryError) : ''),
+    message:
+      message ||
+      (queryError ? errorMessage(queryError) : ''),
     saveError,
     modal,
     setModal,
@@ -526,15 +655,17 @@ export function useDreamRecord() {
     options,
     balance,
     selectedStyle,
-    selectedMood,
     setStyle,
-    setMood,
 
     canGenerate:
       ready &&
       !busy &&
       !imageBusy &&
       generated &&
+      analysis.data?.status === 'COMPLETED' &&
+      !analysis.data.sourceChanged &&
+      story.data?.status === 'COMPLETED' &&
+      !story.data.sourceChanged &&
       !!selectedStyle &&
       !!options.data?.styles.includes(selectedStyle) &&
       !image.isPending &&
@@ -549,7 +680,7 @@ export function useDreamRecord() {
     retryGeneration,
 
     handleSaveWithoutImage: () => {
-      if (completed && !busy) {
+      if (completed && !busy && !imageBusy) {
         setScreen('complete');
       }
     },
