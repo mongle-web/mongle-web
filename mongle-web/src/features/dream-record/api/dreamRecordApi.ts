@@ -365,6 +365,17 @@ export const dreamRecordApi = {
         return null;
       }
 
+      // Axios rejects non-2xx responses before the envelope is handled by
+      // request(). Treat only the server's explicit missing-image code as
+      // an empty result; keep all other 404s and auth/server errors visible.
+      if (
+        axios.isAxiosError(error) &&
+        error.response?.status === 404 &&
+        error.response.data?.code === 'IMAGE_404_1'
+      ) {
+        return null;
+      }
+
       // HTTP 404로 반환되는 경우도 동일하게 처리하되,
       // 해당 꿈이 실제 존재하고 본인 소유인지 먼저 확인한다.
       if (

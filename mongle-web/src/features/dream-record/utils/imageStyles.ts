@@ -29,13 +29,14 @@ export const IMAGE_STYLE_DEFINITIONS: readonly ImageStyleDefinition[] = [
   {
     id: 'expressionism',
     label: '표현주의',
-    aliases: ['EXPRESSIONISM', 'expressionism'],
+    aliases: ['EXPRESSIONISM', 'expressionism', 'expressive-brushwork'],
     semanticMarker: 'expression',
   },
   {
     id: 'illustration',
     label: '일러스트',
-    aliases: ['ILLUSTRATION', 'illustration'],
+    // Product confirmed that this server style is the fourth Figma card.
+    aliases: ['ILLUSTRATION', 'illustration', 'modern-pop-art'],
     semanticMarker: 'illustrat',
   },
 ] as const;
