@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 
+import mongleLogo from '@/assets/images/home/MongleLogo.svg';
+
 const PROFILE_PATH = '/profile';
 
 // 로고 · 프로필 아이콘 공통 헤더 (피그마: 높이 24)
@@ -12,7 +14,8 @@ function Header() {
 
   return (
     <header className="flex h-6 items-center justify-between">
-      <span className="text-[20px] font-normal text-b-200">logo</span>
+      {/* 피그마: 로고 123 x 30 (헤더 높이 24 유지, 로고는 세로 가운데 정렬) */}
+      <img src={mongleLogo} alt="Mongle" className="h-[30px] w-[123px] select-none" />
 
       <button
         type="button"
