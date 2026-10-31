@@ -41,6 +41,7 @@ function CalendarPage() {
 
   const {
     data: dreams = [],
+    isSuccess,
     isFetching,
     isError,
     refetch,
@@ -113,7 +114,11 @@ function CalendarPage() {
 
         {/* 피그마: 헤더에서 아래 문구까지 33px */}
         <div className="mt-[33px]">
-          <CalendarHero monthLabel={monthLabel} dreamDayCount={dreamDayCount} />
+          <CalendarHero
+            monthLabel={monthLabel}
+            dreamDayCount={dreamDayCount}
+            isLoaded={isSuccess}
+          />
         </div>
 
         <section aria-label="꿈 캘린더" className="flex flex-col gap-5">
