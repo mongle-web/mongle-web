@@ -353,7 +353,7 @@ function DreamRecordFlow() {
                   key={flow.download.data.url}
                   src={flow.download.data.url}
                   alt="꿈 이미지"
-                  className="mt-[54px] h-[200px] w-full rounded-2xl"
+                  className="mt-[54px] aspect-square w-full rounded-2xl"
                   onRetry={() => flow.download.refetch()}
                 />
               ) : (

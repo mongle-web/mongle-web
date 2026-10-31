@@ -53,6 +53,8 @@ function DreamImage({ src, alt, className = '', onRetry }: DreamImageProps) {
           key={retryCount}
           src={src}
           alt={alt}
+          width={1024}
+          height={1024}
           loading="lazy"
           onLoad={() => setStatus('loaded')}
           onError={() => setStatus('error')}

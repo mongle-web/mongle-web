@@ -42,7 +42,7 @@ function DreamImageResultPage() {
               key={result.imageUrl}
               src={result.imageUrl}
               alt="AI가 생성한 꿈 이미지"
-              className="mt-[54px] aspect-[353/200] w-full rounded-[16px]"
+              className="mt-[54px] aspect-square w-full rounded-[16px]"
             />
           </>
         ) : (
