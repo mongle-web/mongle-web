@@ -1,11 +1,15 @@
+import { useState } from 'react';
+
 import { useSearchParams } from 'react-router-dom';
 
 import { startKakaoLogin } from '@/api/authApi';
 import kakaoLogo from '@/assets/images/login/KakaoLogo.svg';
 import mongleImage from '@/assets/images/login/MongleImage.png';
 import ErrorIcon from '@/features/login/components/ErrorIcon';
+import ExternalBrowserModal from '@/features/login/components/ExternalBrowserModal';
 import GlowBackground from '@/features/login/components/GlowBackground';
 import MongleLogo from '@/features/login/components/MongleLogo';
+import { getInAppBrowser } from '@/features/login/utils/inAppBrowser';
 
 // 로그인 실패 시 백엔드가 /login?code=... 로 돌려보냄 (허용된 코드만 문구로 바꿈)
 const LOGIN_ERROR_MESSAGES: Record<string, string> = {
@@ -27,7 +31,16 @@ function LoginPage() {
 
   // 카카오 로그인은 백엔드가 처리 → 브라우저 주소를 이동 (axios로 부르지 않음)
   // 신규 회원은 닉네임 페이지, 기존 회원은 홈으로 가는 분기는 콜백 페이지(/auth/callback)에서 처리
+  // 인스타그램 · 카카오톡 등 앱 안의 브라우저면 로그인이 유지되지 않아서 외부 브라우저 안내를 먼저 띄움
+  const [inAppBrowser] = useState(() => getInAppBrowser());
+  const [isExternalModalOpen, setIsExternalModalOpen] = useState(false);
+
   const handleKakaoLogin = () => {
+    if (inAppBrowser) {
+      setIsExternalModalOpen(true);
+      return;
+    }
+
     startKakaoLogin();
   };
 
@@ -72,6 +85,13 @@ function LoginPage() {
           카카오로 시작하기
         </span>
       </button>
+
+      {inAppBrowser && isExternalModalOpen && (
+        <ExternalBrowserModal
+          browser={inAppBrowser}
+          onClose={() => setIsExternalModalOpen(false)}
+        />
+      )}
     </div>
   );
 }
