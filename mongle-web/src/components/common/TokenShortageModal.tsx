@@ -1,3 +1,4 @@
+import { motion, useReducedMotion } from 'framer-motion';
 import FlowModal from './FlowModal';
 
 interface Props {
@@ -11,9 +12,16 @@ interface Props {
 // 충전 후 돌아갈 곳은 onCharge를 넘기는 화면에서 정함
 export default function TokenShortageModal({ required, available, onClose, onCharge }: Props) {
   const shortage = available === null ? null : Math.max(0, required - available);
+  const reduceMotion = useReducedMotion();
 
   return (
-    <FlowModal title="토큰이 부족해요" onClose={onClose} backdropBlur={false} animate>
+    <FlowModal
+      title="토큰이 부족해요"
+      onClose={onClose}
+      backdropBlur={false}
+      animate
+      className="w-[280px] p-6"
+    >
       <div className="relative flex w-full flex-col items-center gap-4">
         <div
           aria-hidden="true"
@@ -23,8 +31,13 @@ export default function TokenShortageModal({ required, available, onClose, onCha
           토큰이 부족해요!
         </h2>
 
-        <div className="flex w-full flex-col gap-4">
-          <div className="flex w-full flex-col gap-2 text-[12px] leading-[1.5] text-b-300">
+        <div className="flex w-full flex-col gap-6">
+          <motion.div
+            initial={reduceMotion ? false : { opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: reduceMotion ? 0 : 0.2, ease: 'easeOut' }}
+            className="flex w-full flex-col gap-2 text-[12px] leading-[1.5] text-b-300"
+          >
             <dl className="flex justify-between">
               <dt>필요한 토큰</dt>
               <dd>{required}개</dd>
@@ -45,13 +58,18 @@ export default function TokenShortageModal({ required, available, onClose, onCha
               <dt>부족한 토큰</dt>
               <dd>{shortage === null ? '—' : `${shortage}개`}</dd>
             </dl>
-          </div>
+          </motion.div>
 
-          <div className="flex w-full shrink-0 flex-col gap-2">
+          <motion.div
+            initial={reduceMotion ? false : { opacity: 0, y: 7 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: reduceMotion ? 0 : 0.22, delay: reduceMotion ? 0 : 0.04 }}
+            className="flex w-full shrink-0 flex-col gap-2"
+          >
             <button
               type="button"
               onClick={onCharge}
-              className="h-9 w-full shrink-0 rounded-lg border border-white/40 bg-p-500 px-3 text-[14px] leading-[1.3] font-semibold"
+              className="h-9 w-full shrink-0 rounded-lg border border-white/40 bg-p-500 px-3 text-[14px] leading-[1.3] font-semibold transition-[transform,filter] duration-150 ease-out active:scale-[0.98] active:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-p-300"
             >
               충전하고 바로 생성하기
             </button>
@@ -64,7 +82,7 @@ export default function TokenShortageModal({ required, available, onClose, onCha
             >
               광고 시청 후 생성하기
             </button>
-          </div>
+          </motion.div>
         </div>
       </div>
     </FlowModal>
