@@ -5,6 +5,7 @@ interface DreamImageProps {
   src: string;
   alt: string;
   className?: string; // 크기 · 모서리 등 바깥 상자 스타일
+  fit?: 'cover' | 'contain';
   onRetry?: () => void | Promise<unknown>;
 }
 
@@ -14,7 +15,7 @@ type ImageStatus = 'loading' | 'loaded' | 'error';
 // - 로딩 중: 스켈레톤(깜빡이는 회색 상자)
 // - 실패: 안내 문구 + 다시 시도 버튼
 // 캘린더 카드, 꿈 상세, 보관함 등에서 같이 사용
-function DreamImage({ src, alt, className = '', onRetry }: DreamImageProps) {
+function DreamImage({ src, alt, className = '', fit = 'cover', onRetry }: DreamImageProps) {
   const [status, setStatus] = useState<ImageStatus>('loading');
   const [retryCount, setRetryCount] = useState(0);
 
@@ -59,7 +60,8 @@ function DreamImage({ src, alt, className = '', onRetry }: DreamImageProps) {
           onLoad={() => setStatus('loaded')}
           onError={() => setStatus('error')}
           className={[
-            'absolute inset-0 size-full object-cover transition-opacity duration-300',
+            'absolute inset-0 size-full transition-opacity duration-300',
+            fit === 'contain' ? 'object-contain' : 'object-cover',
             status === 'loaded' ? 'opacity-100' : 'opacity-0',
           ].join(' ')}
         />

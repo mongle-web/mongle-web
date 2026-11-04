@@ -24,8 +24,8 @@ function DreamImageResultPage() {
   const result = isImageResultState(location.state) ? location.state : null;
 
   return (
-    <div className="mongle-dream-record flex min-h-dvh flex-col bg-b-900 text-b-200">
-      <main className="flex flex-1 flex-col items-center px-5 pt-[154px]">
+    <div className="mongle-dream-record flex min-h-dvh flex-col overflow-x-clip bg-b-900 text-b-200">
+      <main className="flex w-full flex-1 flex-col items-center px-5 pt-[clamp(48px,18dvh,154px)]">
         {result ? (
           <>
             <div className="text-center">
@@ -43,6 +43,7 @@ function DreamImageResultPage() {
               src={result.imageUrl}
               alt="AI가 생성한 꿈 이미지"
               className="mt-[54px] aspect-square w-full rounded-[16px]"
+              fit="contain"
             />
           </>
         ) : (
@@ -58,7 +59,7 @@ function DreamImageResultPage() {
         )}
       </main>
 
-      <footer className="px-5 pt-4 pb-[max(24px,env(safe-area-inset-bottom))]">
+      <footer className="w-full shrink-0 px-5 pt-4 pb-[max(24px,env(safe-area-inset-bottom))]">
         <button
           type="button"
           onClick={() => navigate('/')}
