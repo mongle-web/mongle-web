@@ -13,8 +13,12 @@ export default function TokenShortageModal({ required, available, onClose, onCha
   const shortage = available === null ? null : Math.max(0, required - available);
 
   return (
-    <FlowModal title="토큰이 부족해요" onClose={onClose} backdropBlur={23} animate>
-      <div className="flex w-full flex-col items-center gap-10">
+    <FlowModal title="토큰이 부족해요" onClose={onClose} backdropBlur={false} animate>
+      <div className="relative flex w-full flex-col items-center gap-4">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 -z-10 rounded-[20px] bg-p-300/10 blur-2xl"
+        />
         <h2 className="w-full text-center text-[18px] leading-[1.4] font-semibold">
           토큰이 부족해요!
         </h2>
@@ -34,7 +38,7 @@ export default function TokenShortageModal({ required, available, onClose, onCha
             <div
               role="separator"
               aria-orientation="horizontal"
-              className="h-0 w-full shrink-0 border-t border-b-300"
+              className="h-px min-h-0 w-full flex-none border-0 bg-b-300"
             />
 
             <dl className="flex justify-between">
