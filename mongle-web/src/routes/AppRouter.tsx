@@ -19,6 +19,7 @@ import NicknamePage from '@/features/login/pages/NicknamePage';
 import WelcomePage from '@/features/login/pages/WelcomePage';
 import NicknameEditPage from '@/features/profile/pages/NicknameEditPage';
 import ProfilePage from '@/features/profile/pages/ProfilePage';
+import TokenChargePage from '@/features/token/pages/TokenChargePage';
 
 function AppRouter() {
   return (
@@ -43,6 +44,7 @@ function AppRouter() {
           <Route path="/signup/welcome" element={<WelcomePage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/profile/nickname" element={<NicknameEditPage />} />
+          <Route path="/token" element={<TokenChargePage />} />
         </Routes>
       </AppLayout>
     </BrowserRouter>
