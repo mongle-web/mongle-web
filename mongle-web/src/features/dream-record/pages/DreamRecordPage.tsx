@@ -73,6 +73,20 @@ function DreamRecordFlow() {
 
   const canGenerate = flow.canGenerate && (screen === 'result' || validChoice);
 
+  // AI 분석 · 이야기를 아직 만드는 중 (새로 기록한 꿈은 10초쯤 걸림)
+  // 이때는 "그림으로 남기기" 대신 "꿈을 그릴 준비 중이에요"를 보여줌
+  // 실패 · 내용 변경은 아래 "다시 시도" 안내가 따로 있어서 제외
+  const generationStatus = flow.generation.data?.status;
+  const isPreparingStory =
+    !flow.generation.isError &&
+    !flow.analysis.isError &&
+    !flow.story.isError &&
+    generationStatus !== 'FAILED' &&
+    !flow.generation.data?.sourceChanged &&
+    (generationStatus !== 'COMPLETED' ||
+      flow.analysis.data?.status !== 'COMPLETED' ||
+      flow.story.data?.status !== 'COMPLETED');
+
   useEffect(() => {
     if (flow.dream && (screen === 'result' || screen === 'complete')) {
       clearImageIntent(flow.dream.dreamId);
@@ -450,8 +464,14 @@ function DreamRecordFlow() {
         {screen === 'offer' && (
           <div className="flex flex-col gap-3">
             <PrimaryButton disabled={!canGenerate} onClick={generate}>
-              그림으로 남기기
-              {cost !== null && <TokenCost amount={cost} />}
+              {!canGenerate && isPreparingStory ? (
+                '꿈을 그릴 준비 중이에요'
+              ) : (
+                <>
+                  그림으로 남기기
+                  {cost !== null && <TokenCost amount={cost} />}
+                </>
+              )}
             </PrimaryButton>
 
             <SecondaryButton
