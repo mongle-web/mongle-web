@@ -27,6 +27,8 @@ interface Props {
   cost: number;
   canGenerate: boolean;
   onContinue: () => void;
+  // 결제 완료 후 "토큰 사용하고 이미지 생성" 버튼 표시 여부 (충전만 하는 토큰 충전 페이지에서는 false)
+  showGenerateButton?: boolean;
 }
 
 const orderLabels: Record<PaymentOrder['state'], string> = {
@@ -43,7 +45,13 @@ const orderLabels: Record<PaymentOrder['state'], string> = {
 // 토큰 충전 화면 (꿈 기록 · 꿈 연결 공통, 꿈 기록 담당이 피그마대로 만든 화면)
 // - 결제 처리 · 화면은 그대로, 충전 후 돌아갈 동작(onContinue)과 결제 기록 키(storageKey)만 각 화면에서 전달
 // - 주문 번호는 주소의 ?orderId= 로 유지 (결제창에서 돌아오거나 새로고침해도 이어서 확인)
-export default function CreditCharge({ storageKey, cost, canGenerate, onContinue }: Props) {
+export default function CreditCharge({
+  storageKey,
+  cost,
+  canGenerate,
+  onContinue,
+  showGenerateButton = true,
+}: Props) {
   const [params, setParams] = useSearchParams();
 
   const orderId = params.get('orderId');
@@ -403,7 +411,7 @@ export default function CreditCharge({ storageKey, cost, canGenerate, onContinue
         </SecondaryButton>
       )}
 
-      {paid && (
+      {paid && showGenerateButton && (
         <>
           <PrimaryButton
             disabled={
