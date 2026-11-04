@@ -553,7 +553,8 @@ export function useDreamRecord() {
           writeImageIntent({
             dreamId: id,
             style: selectedStyle,
-            view: 'offer',
+            // 화풍 선택 화면에서 생성하므로 충전 후에도 화풍 선택으로 돌아옴
+            view: 'style',
             action: needsRegeneration ? 'regenerate' : 'create',
             ...(needsRegeneration && result.image?.imageVersion !== undefined
               ? { imageVersion: result.image.imageVersion }

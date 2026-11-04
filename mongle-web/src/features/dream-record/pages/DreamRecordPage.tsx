@@ -55,7 +55,8 @@ function DreamRecordFlow() {
   const intent = dreamId ? readImageIntent(dreamId) : null;
   const restoredStyle = intent?.style && styles.includes(intent.style) ? intent.style : '';
   const chosenStyle = chosenStyleOverride || restoredStyle;
-  const view = viewOverride ?? (params.get('orderId') ? 'charge' : (intent?.view ?? 'style'));
+  // 순서: 그림으로 남길지 결정(offer) → 화풍 선택(style) → 생성 (토큰이 부족하면 충전 후 이어서 생성)
+  const view = viewOverride ?? (params.get('orderId') ? 'charge' : (intent?.view ?? 'offer'));
 
   const screen =
     flow.dream?.recordStatus === 'COMPLETED' && view === 'charge'
@@ -86,6 +87,16 @@ function DreamRecordFlow() {
     (generationStatus !== 'COMPLETED' ||
       flow.analysis.data?.status !== 'COMPLETED' ||
       flow.story.data?.status !== 'COMPLETED');
+
+  // 이미지를 만들 수 있는 이야기가 준비됨 → "그림으로 남기기"로 화풍 선택에 넘어갈 수 있음
+  const isStoryReady =
+    generationStatus === 'COMPLETED' &&
+    !flow.generation.data?.sourceChanged &&
+    flow.analysis.data?.status === 'COMPLETED' &&
+    !flow.analysis.data.sourceChanged &&
+    flow.story.data?.status === 'COMPLETED' &&
+    !flow.story.data.sourceChanged;
+  const canChooseStyle = ready && isStoryReady && !busy && !flow.imageBusy;
 
   useEffect(() => {
     if (flow.dream && (screen === 'result' || screen === 'complete')) {
@@ -122,12 +133,12 @@ function DreamRecordFlow() {
     }
 
     if (screen === 'charge') {
-      rememberImageStep(validChoice ? 'offer' : 'style');
+      rememberImageStep(validChoice ? 'style' : 'offer');
       return;
     }
 
-    if (screen === 'offer') {
-      rememberImageStep('style');
+    if (screen === 'style') {
+      rememberImageStep('offer');
       return;
     }
 
@@ -153,7 +164,7 @@ function DreamRecordFlow() {
       { replace: true },
     );
 
-    rememberImageStep('offer');
+    rememberImageStep('style');
     setLoadingClosed(false);
     setDismissedFailureKey(failureKey);
     flow.handleGenerate();
@@ -452,19 +463,18 @@ function DreamRecordFlow() {
           </div>
         )}
 
+        {/* 화풍을 고르고 "그림 완성하기" → 바로 생성 (토큰이 부족하면 "토큰이 부족해요!" 모달) */}
         {screen === 'style' && (
-          <PrimaryButton
-            disabled={!validChoice || busy || flow.imageBusy}
-            onClick={() => rememberImageStep('offer')}
-          >
+          <PrimaryButton disabled={!canGenerate} onClick={generate}>
             그림 완성하기
           </PrimaryButton>
         )}
 
+        {/* "그림으로 남기기" → 화풍 선택으로 (비용은 이 버튼에 표시) */}
         {screen === 'offer' && (
           <div className="flex flex-col gap-3">
-            <PrimaryButton disabled={!canGenerate} onClick={generate}>
-              {!canGenerate && isPreparingStory ? (
+            <PrimaryButton disabled={!canChooseStyle} onClick={() => rememberImageStep('style')}>
+              {!canChooseStyle && isPreparingStory ? (
                 '꿈을 그릴 준비 중이에요'
               ) : (
                 <>
