@@ -321,9 +321,18 @@ function DreamRecordFlow() {
             )}
 
             {flow.generation.data?.sourceChanged && (
-              <p className="text-center text-sm text-b-400">
-                꿈 내용이 변경되었어요. 보관함에서 최신 기록을 확인해 주세요.
-              </p>
+              <div className="relative z-10 flex flex-col gap-3 text-center">
+                <p className="text-sm text-b-400">
+                  꿈 내용이 변경되었어요. 보관함에서 최신 기록을 확인해 주세요.
+                </p>
+
+                {/* 실패 안내가 함께 떠 있으면 버튼은 위 하나만 (같은 동작) */}
+                {flow.generation.data.status !== 'FAILED' && (
+                  <SecondaryButton disabled={busy} onClick={flow.retryGeneration}>
+                    다시 시도
+                  </SecondaryButton>
+                )}
+              </div>
             )}
           </>
         )}

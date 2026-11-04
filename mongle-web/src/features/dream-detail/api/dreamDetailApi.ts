@@ -111,15 +111,46 @@ export const getDreamDetail = async (dreamId: number): Promise<DreamDetail> => {
 // 꿈 제목 · 내용 수정 (PATCH /api/v1/dreams/{dreamId})
 // 바뀐 항목만 보낸다 (제목만 바꾸면 AI 결과가 그대로 유지됨)
 // 이야기 · 이미지를 만드는 중이거나 다른 곳에서 먼저 수정했으면 409
+// 수정 응답 중 AI 다시 만들기에 필요한 값
+interface UpdatedDreamResponse {
+  revision: number;
+  generation: { status: string; generationVersion: number } | null;
+}
+
+// 내용을 바꾼 꿈은 AI 분석 · 이야기를 새 내용으로 다시 만들어 둠 (꿈 기록 화면과 같은 방식)
+// - 이미지는 현재 내용의 이야기가 있어야 만들 수 있어서, 안 하면 나중에 이미지를 만들 수 없음
+// - 이미 만드는 중이면 그대로 두고, 실패해도 수정은 저장된 상태라 조용히 넘어감 (꿈 기록 화면 "다시 시도"로 다시 가능)
+// POST /api/v1/dreams/{dreamId}/generation/regenerate  body { revision, generationVersion } (지금은 크레딧 차감 없음)
+const regenerateAfterEdit = async (dreamId: number, updated: UpdatedDreamResponse) => {
+  const { generation } = updated;
+  if (!generation || generation.status === 'QUEUED' || generation.status === 'PROCESSING') return;
+
+  try {
+    await apiClient.post(`/api/v1/dreams/${dreamId}/generation/regenerate`, {
+      revision: updated.revision,
+      generationVersion: generation.generationVersion,
+    });
+  } catch {
+    // 위 주석 참고
+  }
+};
+
 export const updateDreamDetail = async (
   dream: DreamDetail,
   { title, content }: DreamDetailUpdate,
 ): Promise<void> => {
-  await apiClient.patch(`/api/v1/dreams/${dream.id}`, {
-    revision: dream.revision,
-    ...(title !== dream.title && { title }),
-    ...(content !== dream.content && { originalText: content }),
-  });
+  const isContentChanged = content !== dream.content;
+
+  const { data } = await apiClient.patch<ApiResponse<UpdatedDreamResponse>>(
+    `/api/v1/dreams/${dream.id}`,
+    {
+      revision: dream.revision,
+      ...(title !== dream.title && { title }),
+      ...(isContentChanged && { originalText: content }),
+    },
+  );
+
+  if (isContentChanged) await regenerateAfterEdit(dream.id, data.data);
 };
 
 // 꿈 수정 · 삭제 가능 여부 (GET /api/v1/dreams/{dreamId}/mutation-status)

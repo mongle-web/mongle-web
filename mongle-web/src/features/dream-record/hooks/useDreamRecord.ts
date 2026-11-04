@@ -488,6 +488,12 @@ export function useDreamRecord() {
 
       remember(latest);
 
+      // 원문 · 감정이 바뀐 꿈(꿈 상세에서 수정 등)은 retry가 409라서 새 분석 · 이야기를 다시 만듦
+      if (latest.analysisSourceChanged || latest.generation?.sourceChanged) {
+        await regenerateChangedInputs(latest);
+        return;
+      }
+
       const retried = await api.retry(latest);
       queryClient.setQueryData(['dream-record', id, 'generation'], retried);
 
