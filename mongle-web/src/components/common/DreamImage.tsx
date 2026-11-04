@@ -15,7 +15,7 @@ type ImageStatus = 'loading' | 'loaded' | 'error';
 // - 로딩 중: 스켈레톤(깜빡이는 회색 상자)
 // - 실패: 안내 문구 + 다시 시도 버튼
 // 캘린더 카드, 꿈 상세, 보관함 등에서 같이 사용
-function DreamImage({ src, alt, className = '', fit = 'cover', onRetry }: DreamImageProps) {
+function DreamImage({ src, alt, className = '', fit = 'contain', onRetry }: DreamImageProps) {
   const [status, setStatus] = useState<ImageStatus>('loading');
   const [retryCount, setRetryCount] = useState(0);
 

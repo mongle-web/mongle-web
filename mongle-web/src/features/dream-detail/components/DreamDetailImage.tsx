@@ -22,7 +22,7 @@ function DreamDetailImage({ imageUrl, title, onCreateImage }: DreamDetailImagePr
   }
 
   return (
-    <div className="relative h-[220px] w-full">
+    <div className="relative aspect-square w-full">
       <DreamImage src={imageUrl} alt={title} className="size-full rounded-3xl" />
       <div
         aria-hidden="true"

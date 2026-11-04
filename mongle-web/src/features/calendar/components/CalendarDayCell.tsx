@@ -26,7 +26,7 @@ function CalendarDayCell({ day, isSelected = false, onClick }: CalendarDayCellPr
 
   if (!isCurrentMonth) {
     return (
-      <div className="flex h-14 min-w-0 flex-1 items-center justify-center text-[14px] leading-[1.5] font-semibold text-[#575669]">
+      <div className="flex h-16 min-w-0 flex-1 items-center justify-center text-[14px] leading-[1.5] font-semibold text-[#575669]">
         {dayNumber}
       </div>
     );
@@ -58,7 +58,7 @@ function CalendarDayCell({ day, isSelected = false, onClick }: CalendarDayCellPr
       aria-pressed={isSelected}
       onClick={() => onClick?.(day)}
       className={[
-        'relative flex h-14 min-w-0 flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-[8px]',
+        'relative flex h-16 min-w-0 flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-[8px]',
         'text-[14px] leading-[1.5] font-semibold transition-colors',
         backgroundClassName,
         textClassName,
@@ -76,7 +76,7 @@ function CalendarDayCell({ day, isSelected = false, onClick }: CalendarDayCellPr
             if (dream) void refreshThumbnail(dream);
           }}
           className={[
-            'pointer-events-none absolute inset-0 size-full object-cover transition-opacity duration-300',
+            'pointer-events-none absolute inset-0 size-full object-contain transition-opacity duration-300',
             imageStatus === 'loaded' ? 'opacity-100' : 'opacity-0',
           ].join(' ')}
         />
