@@ -174,7 +174,7 @@ function DreamConnectResultPage() {
           <DreamImage
             src={imageUrl}
             alt={title ?? ''}
-            className="mb-2 h-[200px] w-full rounded-2xl"
+            className="mb-2 aspect-square w-full rounded-2xl"
             // 임시 주소가 만료됐을 수 있어서 "다시 시도"를 누르면 새 주소를 받음
             onRetry={() => refetchImageUrl()}
           />

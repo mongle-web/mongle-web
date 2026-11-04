@@ -35,7 +35,7 @@ function DreamSummaryCard({ dream, onDelete }: DreamSummaryCardProps) {
         <DreamImage
           src={dream.thumbnailUrl}
           alt={dream.title}
-          className="h-[158px] rounded-2xl"
+          className="aspect-square w-full rounded-2xl"
           // "다시 시도"를 누르면 새 임시 주소를 받아서 다시 불러옴
           onRetry={() => refreshThumbnail(dream, true)}
         />

@@ -8,6 +8,7 @@ interface FlowModalProps {
   children: ReactNode;
   backdropBlur?: boolean | number;
   animate?: boolean;
+  className?: string;
 }
 
 // 진행 상황 · 안내용 유리 느낌 모달 (피그마: 너비 248, 모서리 24, 여백 20)
@@ -20,6 +21,7 @@ function FlowModal({
   children,
   backdropBlur = true,
   animate = false,
+  className: customClassName = '',
 }: FlowModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const reduceMotion = useReducedMotion();
@@ -32,6 +34,7 @@ function FlowModal({
     : undefined;
   const className = [
     'fixed inset-0 m-auto h-fit min-h-0 w-[248px]',
+    customClassName,
     'max-h-[calc(100dvh-40px)] max-w-[calc(100vw-40px)]',
     'overflow-visible rounded-[24px] border-0 bg-[rgba(41,40,52,0.4)] p-5 text-b-200',
     'shadow-[0_0_20px_rgba(255,255,255,0.3)]',
