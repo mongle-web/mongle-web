@@ -1,4 +1,10 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import {
+  createBrowserRouter,
+  createRoutesFromElements,
+  Outlet,
+  Route,
+  RouterProvider,
+} from 'react-router-dom';
 
 import AppLayout from '@/components/layout/AppLayout';
 import CalendarPage from '@/features/calendar/pages/CalendarPage';
@@ -21,34 +27,42 @@ import NicknameEditPage from '@/features/profile/pages/NicknameEditPage';
 import ProfilePage from '@/features/profile/pages/ProfilePage';
 import TokenChargePage from '@/features/token/pages/TokenChargePage';
 
-function AppRouter() {
+function RootLayout() {
   return (
-    <BrowserRouter>
-      <AppLayout>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/dreams/new" element={<DreamRecordPage />} />
-          <Route path="/dreams/image-result" element={<DreamImageResultPage />} />
-          <Route path="/dreams/analysis" element={<DreamAnalysisPage />} />
-          <Route path="/dreams/:dreamId" element={<DreamDetailPage />} />
-          <Route path="/dreams/:dreamId/edit" element={<DreamEditPage />} />
-          <Route path="/archive" element={<DreamArchivePage />} />
-          <Route path="/connect" element={<DreamConnectPage />} />
-          <Route path="/connect/:worldId" element={<DreamConnectResultPage />} />
-          <Route path="/connect/:worldId/saved" element={<DreamConnectSavedPage />} />
-          <Route path="/connect/:worldId/style" element={<DreamConnectStylePage />} />
-          <Route path="/calendar" element={<CalendarPage />} />
-          <Route path="/auth/callback" element={<AuthCallbackPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup/nickname" element={<NicknamePage />} />
-          <Route path="/signup/welcome" element={<WelcomePage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/profile/nickname" element={<NicknameEditPage />} />
-          <Route path="/token" element={<TokenChargePage />} />
-        </Routes>
-      </AppLayout>
-    </BrowserRouter>
+    <AppLayout>
+      <Outlet />
+    </AppLayout>
   );
+}
+
+const router = createBrowserRouter(
+  createRoutesFromElements(
+    <Route element={<RootLayout />}>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/dreams/new" element={<DreamRecordPage />} />
+      <Route path="/dreams/image-result" element={<DreamImageResultPage />} />
+      <Route path="/dreams/analysis" element={<DreamAnalysisPage />} />
+      <Route path="/dreams/:dreamId" element={<DreamDetailPage />} />
+      <Route path="/dreams/:dreamId/edit" element={<DreamEditPage />} />
+      <Route path="/archive" element={<DreamArchivePage />} />
+      <Route path="/connect" element={<DreamConnectPage />} />
+      <Route path="/connect/:worldId" element={<DreamConnectResultPage />} />
+      <Route path="/connect/:worldId/saved" element={<DreamConnectSavedPage />} />
+      <Route path="/connect/:worldId/style" element={<DreamConnectStylePage />} />
+      <Route path="/calendar" element={<CalendarPage />} />
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup/nickname" element={<NicknamePage />} />
+      <Route path="/signup/welcome" element={<WelcomePage />} />
+      <Route path="/profile" element={<ProfilePage />} />
+      <Route path="/profile/nickname" element={<NicknameEditPage />} />
+      <Route path="/token" element={<TokenChargePage />} />
+    </Route>,
+  ),
+);
+
+function AppRouter() {
+  return <RouterProvider router={router} />;
 }
 
 export default AppRouter;

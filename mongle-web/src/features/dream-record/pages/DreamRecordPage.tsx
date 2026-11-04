@@ -435,7 +435,7 @@ function DreamRecordFlow() {
 
         {screen === 'text' && (
           <PrimaryButton
-            disabled={!draft.content.trim() || busy || !ready || flow.saveError}
+            disabled={!draft.content.trim() || busy || !ready}
             onClick={flow.handleNext}
           >
             다음
@@ -453,8 +453,7 @@ function DreamRecordFlow() {
                 !draft.emotions.length ||
                 draft.emotions.length > 2 ||
                 busy ||
-                !ready ||
-                flow.saveError
+                !ready
               }
               onClick={flow.handleNext}
             >
