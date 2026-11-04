@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useBeforeUnload, useBlocker, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { authStorage } from '@/api/authStorage';
 
@@ -58,6 +58,7 @@ export function useDreamRecord() {
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
   const mounted = useRef(false);
+  const allowLocationSync = useRef(false);
 
   const [message, setMessage] = useState('기록을 확인하고 있어요.');
   const [saveError, setSaveError] = useState(false);
@@ -80,6 +81,7 @@ export function useDreamRecord() {
 
     setDream(value);
 
+    allowLocationSync.current = true;
     setParams(
       (current) => {
         current.set('date', value.dreamedAt);
@@ -88,6 +90,7 @@ export function useDreamRecord() {
       },
       { replace: true },
     );
+    allowLocationSync.current = false;
   }
 
   useEffect(() => {
@@ -331,36 +334,49 @@ export function useDreamRecord() {
     });
   }
 
-  // 자동 저장 타이머가 항상 최신 run · saveText 를 쓰도록 ref 에 담아 둠
-  // (함수를 의존성에 직접 넣으면 렌더마다 새로 만들어져서 800ms 타이머가 계속 초기화됨)
-  const autoSaveRef = useRef<(content: string) => void>(() => {});
+  const draftEmotionCodes = (Object.keys(emotionCodes) as Emotion[])
+    .filter((emotion) => draft.emotions.includes(emotion))
+    .map((emotion) => emotionCodes[emotion])
+    .sort();
+  const savedEmotionCodes = [...(dream?.emotions ?? [])].sort();
+  const hasUnsavedChanges =
+    draft.content !== (dream?.originalText ?? '') ||
+    draftEmotionCodes.join(',') !== savedEmotionCodes.join(',');
+
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      hasUnsavedChanges &&
+      !allowLocationSync.current &&
+      (currentLocation.pathname !== nextLocation.pathname ||
+        currentLocation.search !== nextLocation.search ||
+        currentLocation.hash !== nextLocation.hash),
+  );
 
   useEffect(() => {
-    autoSaveRef.current = (content) => {
-      void run(async () => {
-        await saveText(content);
-      }, true);
-    };
-  });
-
-  useEffect(() => {
-    if (
-      !ready ||
-      busy ||
-      saveError ||
-      completed ||
-      baseScreen !== 'text' ||
-      draft.content === (dream?.originalText ?? '')
-    ) {
+    if (blocker.state !== 'blocked') {
       return;
     }
 
-    const timer = setTimeout(() => {
-      autoSaveRef.current(draft.content);
-    }, 800);
+    if (window.confirm('저장하지 않은 변경사항이 있어요. 이 화면에서 나갈까요?')) {
+      blocker.proceed();
+    } else {
+      blocker.reset();
+    }
+  }, [blocker]);
 
-    return () => clearTimeout(timer);
-  }, [draft.content, ready, busy, saveError, completed, baseScreen, dream?.originalText]);
+  useBeforeUnload(
+    useCallback(
+      (event) => {
+        if (!hasUnsavedChanges) {
+          return;
+        }
+
+        event.preventDefault();
+        event.returnValue = '';
+      },
+      [hasUnsavedChanges],
+    ),
+  );
 
   function updateDraft(changes: Partial<DreamDraft>) {
     if (completed && baseScreen !== 'text') {
@@ -400,7 +416,7 @@ export function useDreamRecord() {
       if (baseScreen === 'text' && draft.content.trim()) {
         const saved = await saveText(draft.content);
 
-        const nextDream = saved.recordStatus === 'COMPLETED' ? saved : await api.submit(saved);
+        const nextDream = saved.recordStatus === 'DRAFT' ? await api.submit(saved) : saved;
         remember(nextDream);
 
         if (mounted.current) {

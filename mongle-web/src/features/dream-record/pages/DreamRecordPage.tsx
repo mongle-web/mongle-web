@@ -213,7 +213,7 @@ function DreamRecordFlow() {
         initial={reduceMotion ? false : { opacity: 0, y: 3 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: reduceMotion ? 0 : 0.16, ease: 'easeOut' }}
-        className={`flex-1 px-5 ${finished ? 'pt-[154px] text-center' : 'pt-5'}`}
+        className={`flex-1 px-5 ${finished ? 'pt-[clamp(48px,18dvh,154px)] text-center' : 'pt-5'}`}
       >
         {screen === 'text' && (
           <>
@@ -388,6 +388,7 @@ function DreamRecordFlow() {
                   src={flow.download.data.url}
                   alt="꿈 이미지"
                   className="mt-[54px] aspect-square w-full rounded-2xl"
+                  fit="contain"
                   onRetry={() => flow.download.refetch()}
                 />
               ) : (
@@ -410,7 +411,9 @@ function DreamRecordFlow() {
         )}
       </motion.main>
 
-      <footer className="sticky bottom-0 z-10 bg-b-900 px-5 pt-3 pb-[max(16px,env(safe-area-inset-bottom))]">
+      <footer
+        className={`${finished ? 'shrink-0' : 'sticky bottom-0 z-10'} bg-b-900 px-5 pt-3 pb-[max(16px,env(safe-area-inset-bottom))]`}
+      >
         {flow.storageWarning && (
           <p role="status" className="mb-3 text-center text-sm text-b-400">
             {flow.storageWarning}
@@ -435,7 +438,7 @@ function DreamRecordFlow() {
 
         {screen === 'text' && (
           <PrimaryButton
-            disabled={!draft.content.trim() || busy || !ready || flow.saveError}
+            disabled={!draft.content.trim() || busy || !ready}
             onClick={flow.handleNext}
           >
             다음
@@ -453,8 +456,7 @@ function DreamRecordFlow() {
                 !draft.emotions.length ||
                 draft.emotions.length > 2 ||
                 busy ||
-                !ready ||
-                flow.saveError
+                !ready
               }
               onClick={flow.handleNext}
             >
