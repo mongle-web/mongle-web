@@ -1,5 +1,8 @@
 import { useState } from 'react';
 
+import TermsDetail1 from '@/features/login/components/TermsDetail1';
+import TermsDetail2 from '@/features/login/components/TermsDetail2';
+
 type TermsKey = 'service' | 'privacy';
 
 const TERMS_ITEMS: { key: TermsKey; label: string }[] = [
@@ -12,7 +15,6 @@ interface TermsAgreementSheetProps {
   onAgree: () => void;
 }
 
-// 체크 아이콘 (피그마: 20 x 20, 색은 currentColor)
 function CheckIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" className="size-5 shrink-0">
@@ -33,6 +35,8 @@ function TermsAgreementSheet({ onAgree }: TermsAgreementSheetProps) {
     service: false,
     privacy: false,
   });
+  // 상세 화면을 띄운 약관 (없으면 null)
+  const [openedTerms, setOpenedTerms] = useState<TermsKey | null>(null);
 
   const isAllAgreed = agreements.service && agreements.privacy;
 
@@ -44,6 +48,12 @@ function TermsAgreementSheet({ onAgree }: TermsAgreementSheetProps) {
 
   const handleToggle = (key: TermsKey) => {
     setAgreements((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  // 상세 화면에서 "동의하기": 그 약관을 동의 상태로 바꾸고 시트로 돌아옴
+  const handleAgreeDetail = (key: TermsKey) => {
+    setAgreements((prev) => ({ ...prev, [key]: true }));
+    setOpenedTerms(null);
   };
 
   return (
@@ -100,15 +110,23 @@ function TermsAgreementSheet({ onAgree }: TermsAgreementSheetProps) {
                   <span className="text-[16px] leading-[1.5] font-medium">{label}</span>
                 </button>
 
-                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" className="size-5 shrink-0">
-                  <path
-                    d="M9.16699 15L14.167 10L9.167 5"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                {/* 약관 상세 보기 */}
+                <button
+                  type="button"
+                  onClick={() => setOpenedTerms(key)}
+                  aria-label={`${label} 자세히 보기`}
+                  className="shrink-0 cursor-pointer"
+                >
+                  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" className="size-5">
+                    <path
+                      d="M9.16699 15L14.167 10L9.167 5"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
               </li>
             ))}
           </ul>
@@ -126,6 +144,20 @@ function TermsAgreementSheet({ onAgree }: TermsAgreementSheetProps) {
           </span>
         </button>
       </section>
+
+      {openedTerms === 'service' && (
+        <TermsDetail1
+          onAgree={() => handleAgreeDetail('service')}
+          onClose={() => setOpenedTerms(null)}
+        />
+      )}
+
+      {openedTerms === 'privacy' && (
+        <TermsDetail2
+          onAgree={() => handleAgreeDetail('privacy')}
+          onClose={() => setOpenedTerms(null)}
+        />
+      )}
     </div>
   );
 }
