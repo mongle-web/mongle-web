@@ -4,6 +4,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 
 import { completeOnboarding } from '@/api/userApi';
 import ErrorIcon from '@/features/login/components/ErrorIcon';
+import TermsAgreementSheet from '@/features/login/components/TermsAgreementSheet';
 import { LOGIN_PATH, useAuth } from '@/hooks/useAuth';
 
 // 2~10자, 한글(완성형) · 영문 · 숫자만 허용 (공백 · 특수문자 불가)
@@ -18,6 +19,8 @@ function NicknamePage() {
   const [nickname, setNickname] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitError, setIsSubmitError] = useState(false);
+  // 회원가입 약관 동의 (동의 전에는 약관 시트가 닉네임 화면을 덮음)
+  const [isTermsAgreed, setIsTermsAgreed] = useState(false);
 
   const isValid = NICKNAME_REGEX.test(nickname);
   // 1자만 입력한 경우는 에러 없이 다음 버튼만 비활성
@@ -90,6 +93,8 @@ function NicknamePage() {
       >
         <span className="text-[16px] leading-[1.3] font-semibold text-b-200">다음</span>
       </button>
+
+      {!isTermsAgreed && <TermsAgreementSheet onAgree={() => setIsTermsAgreed(true)} />}
     </div>
   );
 }
