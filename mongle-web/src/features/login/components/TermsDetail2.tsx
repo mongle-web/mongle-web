@@ -18,8 +18,9 @@ function TermsDetail2({ onAgree, onClose }: TermsDetail2Props) {
     >
       <BackHeader title="개인정보 수집·이용 동의" onBack={onClose} />
 
-      {/* 동의 전문 */}
-      <main className="flex-1 overflow-y-auto px-5 pt-5 pb-6" />
+      <main className="flex-1 overflow-y-auto px-5 pt-5 pb-6">
+        <p className="whitespace-pre-line">{`여기에다가 복붙하면 됩니다`}</p>
+      </main>
 
       {/* 동의하기 (약관 시트의 "동의하고 계속하기" 활성 상태와 같은 모양) */}
       <div className="px-5 pt-2 pb-[42px]">
