@@ -1,6 +1,6 @@
 import type { Balance } from '../api/dreamRecordApi';
 import type { PaymentOrder } from '../api/dreamPaymentApi';
-import { isPaymentComplete } from './paymentState';
+import { evaluatePaymentResume } from './paymentState';
 
 export type PaymentResumeResult =
   | { kind: 'waiting'; order: PaymentOrder }
@@ -17,13 +17,13 @@ export async function confirmPaymentForImage(
 ): Promise<PaymentResumeResult> {
   const order = await api.order(orderId);
 
-  if (!isPaymentComplete(order)) {
+  if (evaluatePaymentResume(order, null, cost) === 'waiting') {
     return { kind: 'waiting', order };
   }
 
   const balance = await api.balance();
 
-  if (balance.spendingBlocked || balance.available < cost) {
+  if (evaluatePaymentResume(order, balance, cost) === 'insufficient') {
     return { kind: 'insufficient', order, balance };
   }
 

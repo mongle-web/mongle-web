@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import axios from 'axios';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 
 // TODO: 결제 · 잔액 API와 결제 유틸을 공통 위치(src/api)로 옮길지 꿈 기록 담당과 협의 (지금은 꿈 기록 쪽 그대로 사용)
 import { dreamRecordApi, errorMessage } from '@/features/dream-record/api/dreamRecordApi';
@@ -9,10 +9,22 @@ import { dreamRecordApi, errorMessage } from '@/features/dream-record/api/dreamR
 import {
   dreamPaymentApi,
   isPaymentComplete,
+  paymentErrorMessage,
   paymentLink,
   type CreditProduct,
   type PaymentOrder,
 } from '@/features/dream-record/api/dreamPaymentApi';
+import {
+  createPendingPaymentRequest,
+  isPaymentRecoveryExpired,
+  isValidBuyerPhone,
+  normalizeBuyerPhone,
+  parsePendingPaymentRequest,
+} from '@/features/dream-record/utils/paymentRecovery';
+import {
+  canClearPaymentOrder,
+  isPaymentPollingStopped,
+} from '@/features/dream-record/utils/paymentState';
 import { confirmPaymentForImage } from '@/features/dream-record/utils/paymentWorkflow';
 import { runWithRequestLock } from '@/features/dream-record/utils/requestLock';
 
@@ -40,7 +52,24 @@ const orderLabels: Record<PaymentOrder['state'], string> = {
   PAID: '결제가 완료되었어요.',
   CANCELLED: '결제가 취소되었어요.',
   PAYMENT_REVIEW: '결제 확인이 필요해요. 확인이 끝날 때까지 기다려 주세요.',
+  CREDIT_RECLAIMED: '결제가 취소되어 지급 토큰이 회수되었어요.',
 };
+
+function readPendingRequest(key: string) {
+  try {
+    return parsePendingPaymentRequest(sessionStorage.getItem(key));
+  } catch {
+    return null;
+  }
+}
+
+function isMissingRecoveredOrder(error: unknown) {
+  return (
+    axios.isAxiosError(error) &&
+    error.response?.status === 404 &&
+    error.response.data?.code === 'PAYMENT_404_1'
+  );
+}
 
 // 토큰 충전 화면 (꿈 기록 · 꿈 연결 공통, 꿈 기록 담당이 피그마대로 만든 화면)
 // - 결제 처리 · 화면은 그대로, 충전 후 돌아갈 동작(onContinue)과 결제 기록 키(storageKey)만 각 화면에서 전달
@@ -57,13 +86,7 @@ export default function CreditCharge({
   const orderId = params.get('orderId');
   const key = storageKey;
 
-  const [pendingRequest, setPendingRequest] = useState(() => {
-    try {
-      return sessionStorage.getItem(key) !== null;
-    } catch {
-      return false;
-    }
-  });
+  const [pendingRequest, setPendingRequest] = useState(() => readPendingRequest(key));
 
   const [phone, setPhone] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<CreditProduct | null>(null);
@@ -86,19 +109,19 @@ export default function CreditCharge({
     retry: false,
     refetchOnWindowFocus: 'always',
     refetchInterval: (query) =>
-      query.state.error ||
-      !query.state.data ||
-      isPaymentComplete(query.state.data) ||
-      ['CANCELLED', 'REQUEST_REJECTED', 'PAYMENT_REVIEW'].includes(query.state.data.state)
+      query.state.error || !query.state.data || isPaymentPollingStopped(query.state.data)
         ? false
         : 3000,
   });
 
-  const history = useQuery({
-    queryKey: ['dream-payments', 'recent'],
-    queryFn: ({ signal }) => dreamPaymentApi.orders(signal),
-    enabled: pendingRequest && !orderId,
+  const recoveredOrder = useQuery({
+    queryKey: ['dream-payments', 'request', pendingRequest?.requestId],
+    queryFn: ({ signal }) => dreamPaymentApi.byRequestId(pendingRequest!.requestId, signal),
+    enabled: !!pendingRequest && !orderId,
     retry: false,
+    refetchOnWindowFocus: 'always',
+    refetchInterval: () =>
+      pendingRequest && !isPaymentRecoveryExpired(pendingRequest) ? 3000 : false,
   });
 
   const paid = isPaymentComplete(order.data);
@@ -111,9 +134,15 @@ export default function CreditCharge({
 
   const url = paymentLink(order.data);
 
-  const terminal = order.data && ['CANCELLED', 'REQUEST_REJECTED'].includes(order.data.state);
+  const clearable = canClearPaymentOrder(order.data);
+  const recoveryExpired = pendingRequest ? isPaymentRecoveryExpired(pendingRequest) : false;
+  const recoveryMissing = isMissingRecoveredOrder(recoveredOrder.error);
 
-  const queryError = products.error || order.error || balance.error || history.error;
+  const queryError =
+    products.error ||
+    order.error ||
+    balance.error ||
+    (!recoveryMissing ? recoveredOrder.error : null);
 
   function chooseOrder(value: PaymentOrder) {
     queryClient.setQueryData(['dream-payments', 'order', value.orderId], value);
@@ -135,9 +164,9 @@ export default function CreditCharge({
       return;
     }
 
-    const buyerPhone = phone.replace(/\D/g, '');
+    const buyerPhone = normalizeBuyerPhone(phone);
 
-    if (!/^01[016789][0-9]{7,8}$/.test(buyerPhone)) {
+    if (!isValidBuyerPhone(buyerPhone)) {
       setMessage('휴대폰 번호를 정확히 입력해 주세요.');
       return;
     }
@@ -148,23 +177,21 @@ export default function CreditCharge({
 
       try {
         const requestId = crypto.randomUUID();
+        const pending = createPendingPaymentRequest({
+          requestId,
+          productId: product.productId,
+        });
 
         // 응답을 놓친 주문을 자동으로 다시 만들지 않도록 요청 흔적을 남긴다.
-        // 휴대폰 번호와 결제 URL은 저장하지 않는다.
+        // requestId와 상품 ID만 탭 단위 저장소에 보관하고 완료 후 지운다.
         try {
-          sessionStorage.setItem(
-            key,
-            JSON.stringify({
-              requestId,
-              productId: product.productId,
-            }),
-          );
+          sessionStorage.setItem(key, JSON.stringify(pending));
         } catch {
           setMessage('주문 식별자를 안전하게 보관할 수 없어 결제를 시작하지 않았어요.');
           return;
         }
 
-        setPendingRequest(true);
+        setPendingRequest(pending);
 
         const result = await dreamPaymentApi.create({
           requestId,
@@ -181,14 +208,12 @@ export default function CreditCharge({
             // 서버가 거절한 요청은 화면에서 다시 선택할 수 있게 한다.
           }
 
-          setPendingRequest(false);
-          setMessage(errorMessage(error));
+          setPendingRequest(null);
+          setMessage(paymentErrorMessage(error));
         } else {
           setMessage(
-            `${errorMessage(error)} 같은 주문 식별자를 유지하고 아래 주문 내역에서 먼저 확인해 주세요.`,
+            `${paymentErrorMessage(error)} 같은 주문 식별자를 유지하고 상태를 먼저 확인해 주세요.`,
           );
-
-          await history.refetch();
         }
       } finally {
         setBusy(false);
@@ -197,7 +222,7 @@ export default function CreditCharge({
   }
 
   function clearTerminalOrder() {
-    if (!terminal && !paid) {
+    if (!clearable) {
       return;
     }
 
@@ -207,7 +232,7 @@ export default function CreditCharge({
       // 서버에서 확인한 주문 상태를 기준으로 처리한다.
     }
 
-    setPendingRequest(false);
+    setPendingRequest(null);
 
     setParams(
       (current) => {
@@ -262,6 +287,13 @@ export default function CreditCharge({
     });
   }
 
+  if (!orderId && recoveredOrder.data) {
+    const restoredParams = new URLSearchParams(params);
+    restoredParams.set('orderId', recoveredOrder.data.orderId);
+
+    return <Navigate replace to={{ search: `?${restoredParams.toString()}` }} />;
+  }
+
   return (
     <section className="flex flex-col gap-[14px]">
       <div className="flex min-h-[53px] items-center justify-between rounded-2xl bg-[#292834] px-5 py-4">
@@ -308,32 +340,17 @@ export default function CreditCharge({
         </>
       )}
 
-      {pendingRequest && !orderId && (
+      {!!pendingRequest && !orderId && (
         <>
           <p role="status" className="text-sm text-b-400">
-            결제 요청을 확인하고 있어요.
+            {recoveryExpired
+              ? '주문 확인이 오래 걸리고 있어요. 새 주문을 만들지 말고 고객센터에 문의해 주세요.'
+              : '저장한 주문 식별자로 결제 요청을 확인하고 있어요.'}
           </p>
 
-          {history.data?.items.map((item) => (
-            <button
-              key={item.orderId}
-              type="button"
-              onClick={() => chooseOrder(item)}
-              className="rounded-2xl bg-n-900 p-4 text-left"
-            >
-              <span className="block">
-                {item.productName} · {item.price.toLocaleString('ko-KR')}원
-              </span>
-
-              <span className="mt-1 block text-xs">
-                {new Date(item.createdAt).toLocaleString('ko-KR')} · {orderLabels[item.state]}
-              </span>
-            </button>
-          ))}
-
-          {history.data?.items.length === 0 && (
+          {recoveryMissing && !recoveryExpired && (
             <p className="text-sm text-b-400">
-              결제 요청 상태를 확인할 수 없어요. 다시 조회해 주세요.
+              주문 생성 처리 중일 수 있어요. 같은 식별자를 유지한 채 잠시 뒤 다시 조회할게요.
             </p>
           )}
         </>
@@ -395,7 +412,7 @@ export default function CreditCharge({
             if (orderId) {
               void order.refetch();
             } else {
-              void history.refetch();
+              void recoveredOrder.refetch();
             }
 
             void balance.refetch();
@@ -405,7 +422,7 @@ export default function CreditCharge({
         </SecondaryButton>
       )}
 
-      {(terminal || paid) && (
+      {clearable && (
         <SecondaryButton disabled={busy} onClick={clearTerminalOrder}>
           {paid ? '추가 충전하기' : '다른 충전 상품 선택'}
         </SecondaryButton>
@@ -439,7 +456,10 @@ export default function CreditCharge({
             <input
               aria-label="결제용 휴대폰 번호"
               type="tel"
+              inputMode="numeric"
               autoComplete="tel"
+              required
+              pattern="01[016789][0-9]{7,8}"
               value={phone}
               onChange={(event) => setPhone(event.target.value)}
               disabled={busy}
