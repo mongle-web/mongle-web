@@ -27,7 +27,9 @@ function DreamConnectStylePage() {
   const worldId = Number(worldIdParam);
 
   const [params, setParams] = useSearchParams();
-  const isChargeView = params.get('view') === 'charge';
+  const orderId = params.get('orderId');
+  // PayApp 복귀 URL에 orderId만 남아도 주문 조회 화면을 복원한다.
+  const isChargeView = params.get('view') === 'charge' || !!orderId;
   const selectedStyle = params.get('style') ?? '';
 
   const { data: styles = [] } = useImageStyles();
