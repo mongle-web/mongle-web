@@ -157,6 +157,19 @@ export default function CreditCharge({
     retry: false,
   });
 
+  // 같은 주문 상태로 1분이 지나면 자동 조회를 멈추고 수동 조회로 전환 (상태가 바뀌면 다시 자동 조회)
+  const cachedOrder = queryClient.getQueryData<PaymentOrder>(['dream-payments', 'order', orderId]);
+  const orderPollingExpired = usePollingExpired(
+    cachedOrder ? `${cachedOrder.orderId}:${cachedOrder.state}:${cachedOrder.creditGranted}` : null,
+    POLL_LIMIT_MS,
+  );
+
+  // 복구 조회로 1분 동안 찾지 못하면 자동 조회를 멈추고 수동 조회 · 다시 선택을 안내
+  const recoveryPollingExpired = usePollingExpired(
+    pendingRequest && !orderId && !busy ? pendingRequestId : null,
+    POLL_LIMIT_MS,
+  );
+
   const order = useQuery({
     queryKey: ['dream-payments', 'order', orderId],
     queryFn: ({ signal }) => dreamPaymentApi.order(orderId!, signal),
@@ -173,12 +186,6 @@ export default function CreditCharge({
         : POLL_INTERVAL_MS,
   });
 
-  // 같은 주문 상태로 1분이 지나면 자동 조회를 멈추고 수동 조회로 전환 (상태가 바뀌면 다시 자동 조회)
-  const orderPollingExpired = usePollingExpired(
-    order.data ? `${order.data.orderId}:${order.data.state}:${order.data.creditGranted}` : null,
-    POLL_LIMIT_MS,
-  );
-
   // 주문 생성 응답을 놓친 경우 같은 requestId로 주문을 찾는다 (새 주문 · 재결제는 하지 않음)
   // 생성 중에는 잠깐 404일 수 있어 한 번의 404로 requestId를 버리지 않는다
   const recovery = useQuery({
@@ -191,12 +198,6 @@ export default function CreditCharge({
         ? POLL_INTERVAL_MS
         : false,
   });
-
-  // 1분 동안 찾지 못하면 자동 조회를 멈추고 수동 조회 · 다시 선택을 안내
-  const recoveryPollingExpired = usePollingExpired(
-    pendingRequest && !orderId && !busy ? pendingRequestId : null,
-    POLL_LIMIT_MS,
-  );
 
   const recoveryMissing = recoveryPollingExpired && !recovery.data && isNotFound(recovery.error);
 
