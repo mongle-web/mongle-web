@@ -25,10 +25,14 @@ export interface PaymentOrder {
     | 'PENDING'
     | 'PAID'
     | 'CANCELLED'
-    | 'PAYMENT_REVIEW';
+    | 'PAYMENT_REVIEW'
+    | 'CREDIT_RECLAIMED'
+    | 'REFUND_SETTLED';
   paymentUrl: string | null;
   creditGranted: boolean;
   createdAt: string;
+  // 환불 정산 등으로 확인된 주문 누적 취소액 (확인된 정산이 없으면 null)
+  confirmedCancellationAmount: number | null;
 }
 
 export interface OrderRequest {
@@ -76,6 +80,15 @@ export const dreamPaymentApi = {
     request<PaymentOrder>(
       'get',
       `/api/v1/payments/orders/${encodeURIComponent(id)}`,
+      undefined,
+      signal,
+    ),
+
+  // 주문 생성 응답을 놓쳤을 때 보관한 requestId로 같은 주문을 복구 조회 (조회만 하고 결제 요청 · 지급은 하지 않음)
+  byRequestId: (requestId: string, signal?: AbortSignal) =>
+    request<PaymentOrder>(
+      'get',
+      `/api/v1/payments/orders/by-request-id/${encodeURIComponent(requestId)}`,
       undefined,
       signal,
     ),

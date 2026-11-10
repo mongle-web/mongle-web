@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
@@ -40,7 +40,89 @@ const orderLabels: Record<PaymentOrder['state'], string> = {
   PAID: '결제가 완료되었어요.',
   CANCELLED: '결제가 취소되었어요.',
   PAYMENT_REVIEW: '결제 확인이 필요해요. 확인이 끝날 때까지 기다려 주세요.',
+  CREDIT_RECLAIMED: '결제가 취소되어 지급된 토큰이 회수되었어요.',
+  REFUND_SETTLED: '환불이 완료되었어요.',
 };
+
+// 자동 조회를 멈추는 주문 상태 (더 기다려도 바뀌지 않거나 별도 확인이 필요한 상태)
+const stoppedStates: PaymentOrder['state'][] = [
+  'CANCELLED',
+  'REQUEST_REJECTED',
+  'PAYMENT_REVIEW',
+  'CREDIT_RECLAIMED',
+  'REFUND_SETTLED',
+];
+
+// 끝난 주문이라 다른 상품을 다시 고를 수 있는 상태
+const terminalStates: PaymentOrder['state'][] = [
+  'CANCELLED',
+  'REQUEST_REJECTED',
+  'CREDIT_RECLAIMED',
+  'REFUND_SETTLED',
+];
+
+// 자동 조회 간격과 최대 시간 (이후에는 "다시 확인" 버튼으로 수동 조회)
+const POLL_INTERVAL_MS = 3000;
+const POLL_LIMIT_MS = 60_000;
+
+// 주문 생성 실패 코드별 안내 (스웨거 POST /api/v1/payments/orders)
+const paymentErrorMessages: Record<string, string> = {
+  PAYMENT_409_1: '지금은 이 상품을 구매할 수 없어요.',
+  PAYMENT_409_2: '이미 다른 내용으로 요청된 주문이에요.',
+  PAYMENT_409_3: '진행 중인 결제와 충돌했어요.',
+  CREDIT_409_5: '확인 중인 결제가 있어요. 확인이 끝난 뒤 다시 시도해 주세요.',
+  PAYMENT_503_1: '지금은 결제를 준비 중이에요. 잠시 후 다시 시도해 주세요.',
+  PAYMENT_503_2: '결제 요청이 많아요.',
+};
+
+// 서버가 주문을 만들지 않고 거절한 코드 (요청 흔적을 지우고 다시 고를 수 있게 함)
+const rejectedCodes = ['PAYMENT_409_1', 'CREDIT_409_5', 'PAYMENT_503_1'];
+
+function isNotFound(error: unknown) {
+  return axios.isAxiosError(error) && error.response?.status === 404;
+}
+
+function paymentErrorCode(error: unknown): string | undefined {
+  return axios.isAxiosError(error) ? error.response?.data?.code : undefined;
+}
+
+function paymentErrorMessage(error: unknown) {
+  return paymentErrorMessages[paymentErrorCode(error) ?? ''] ?? errorMessage(error);
+}
+
+// sessionStorage에 남긴 주문 생성 요청의 requestId
+function readPendingRequestId(key: string) {
+  try {
+    const saved = sessionStorage.getItem(key);
+
+    if (!saved) {
+      return null;
+    }
+
+    const { requestId } = JSON.parse(saved) as { requestId?: unknown };
+
+    return typeof requestId === 'string' ? requestId : null;
+  } catch {
+    return null;
+  }
+}
+
+// key가 같은 상태로 limit만큼 지나면 true (key가 바뀌면 다시 셈)
+function usePollingExpired(key: string | null, limit: number) {
+  const [expiredKey, setExpiredKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!key) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => setExpiredKey(key), limit);
+
+    return () => window.clearTimeout(timer);
+  }, [key, limit]);
+
+  return key !== null && expiredKey === key;
+}
 
 // 토큰 충전 화면 (꿈 기록 · 꿈 연결 공통, 꿈 기록 담당이 피그마대로 만든 화면)
 // - 결제 처리 · 화면은 그대로, 충전 후 돌아갈 동작(onContinue)과 결제 기록 키(storageKey)만 각 화면에서 전달
@@ -57,13 +139,9 @@ export default function CreditCharge({
   const orderId = params.get('orderId');
   const key = storageKey;
 
-  const [pendingRequest, setPendingRequest] = useState(() => {
-    try {
-      return sessionStorage.getItem(key) !== null;
-    } catch {
-      return false;
-    }
-  });
+  // 응답을 놓쳤을 수 있는 주문 생성 요청의 requestId (결과를 확인할 때까지 유지)
+  const [pendingRequestId, setPendingRequestId] = useState(() => readPendingRequestId(key));
+  const pendingRequest = pendingRequestId !== null;
 
   const [phone, setPhone] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<CreditProduct | null>(null);
@@ -86,19 +164,46 @@ export default function CreditCharge({
     retry: false,
     refetchOnWindowFocus: 'always',
     refetchInterval: (query) =>
+      orderPollingExpired ||
       query.state.error ||
       !query.state.data ||
       isPaymentComplete(query.state.data) ||
-      ['CANCELLED', 'REQUEST_REJECTED', 'PAYMENT_REVIEW'].includes(query.state.data.state)
+      stoppedStates.includes(query.state.data.state)
         ? false
-        : 3000,
+        : POLL_INTERVAL_MS,
   });
 
-  const history = useQuery({
-    queryKey: ['dream-payments', 'recent'],
-    queryFn: ({ signal }) => dreamPaymentApi.orders(signal),
-    enabled: pendingRequest && !orderId,
+  // 같은 주문 상태로 1분이 지나면 자동 조회를 멈추고 수동 조회로 전환 (상태가 바뀌면 다시 자동 조회)
+  const orderPollingExpired = usePollingExpired(
+    order.data ? `${order.data.orderId}:${order.data.state}:${order.data.creditGranted}` : null,
+    POLL_LIMIT_MS,
+  );
+
+  // 주문 생성 응답을 놓친 경우 같은 requestId로 주문을 찾는다 (새 주문 · 재결제는 하지 않음)
+  // 생성 중에는 잠깐 404일 수 있어 한 번의 404로 requestId를 버리지 않는다
+  const recovery = useQuery({
+    queryKey: ['dream-payments', 'by-request-id', pendingRequestId],
+    queryFn: ({ signal }) => dreamPaymentApi.byRequestId(pendingRequestId!, signal),
+    enabled: pendingRequest && !orderId && !busy,
     retry: false,
+    refetchInterval: (query) =>
+      !recoveryPollingExpired && !query.state.data && isNotFound(query.state.error)
+        ? POLL_INTERVAL_MS
+        : false,
+  });
+
+  // 1분 동안 찾지 못하면 자동 조회를 멈추고 수동 조회 · 다시 선택을 안내
+  const recoveryPollingExpired = usePollingExpired(
+    pendingRequest && !orderId && !busy ? pendingRequestId : null,
+    POLL_LIMIT_MS,
+  );
+
+  const recoveryMissing = recoveryPollingExpired && !recovery.data && isNotFound(recovery.error);
+
+  useEffect(() => {
+    if (recovery.data && !orderId) {
+      chooseOrder(recovery.data);
+    }
   });
 
   const paid = isPaymentComplete(order.data);
@@ -111,9 +216,14 @@ export default function CreditCharge({
 
   const url = paymentLink(order.data);
 
-  const terminal = order.data && ['CANCELLED', 'REQUEST_REJECTED'].includes(order.data.state);
+  const terminal = order.data && terminalStates.includes(order.data.state);
 
-  const queryError = products.error || order.error || balance.error || history.error;
+  // 복구 조회 404는 주문 생성 중일 수 있어 오류로 보여주지 않는다
+  const queryError =
+    products.error ||
+    order.error ||
+    balance.error ||
+    (isNotFound(recovery.error) ? null : recovery.error);
 
   function chooseOrder(value: PaymentOrder) {
     queryClient.setQueryData(['dream-payments', 'order', value.orderId], value);
@@ -164,7 +274,7 @@ export default function CreditCharge({
           return;
         }
 
-        setPendingRequest(true);
+        setPendingRequestId(requestId);
 
         const result = await dreamPaymentApi.create({
           requestId,
@@ -174,21 +284,24 @@ export default function CreditCharge({
 
         chooseOrder(result);
       } catch (error) {
-        if (axios.isAxiosError(error) && [400, 401, 403].includes(error.response?.status ?? 0)) {
+        const rejected =
+          (axios.isAxiosError(error) && [400, 401, 403].includes(error.response?.status ?? 0)) ||
+          rejectedCodes.includes(paymentErrorCode(error) ?? '');
+
+        if (rejected) {
           try {
             sessionStorage.removeItem(key);
           } catch {
             // 서버가 거절한 요청은 화면에서 다시 선택할 수 있게 한다.
           }
 
-          setPendingRequest(false);
-          setMessage(errorMessage(error));
+          setPendingRequestId(null);
+          setMessage(paymentErrorMessage(error));
         } else {
+          // 주문이 만들어졌을 수 있으므로 같은 requestId로 복구 조회한다 (busy가 풀리면 자동 시작)
           setMessage(
-            `${errorMessage(error)} 같은 주문 식별자를 유지하고 아래 주문 내역에서 먼저 확인해 주세요.`,
+            `${paymentErrorMessage(error)} 새로 결제하지 말고 결제 요청 확인을 기다려 주세요.`,
           );
-
-          await history.refetch();
         }
       } finally {
         setBusy(false);
@@ -197,7 +310,7 @@ export default function CreditCharge({
   }
 
   function clearTerminalOrder() {
-    if (!terminal && !paid) {
+    if (!terminal && !paid && !recoveryMissing) {
       return;
     }
 
@@ -207,7 +320,7 @@ export default function CreditCharge({
       // 서버에서 확인한 주문 상태를 기준으로 처리한다.
     }
 
-    setPendingRequest(false);
+    setPendingRequestId(null);
 
     setParams(
       (current) => {
@@ -311,31 +424,10 @@ export default function CreditCharge({
       {pendingRequest && !orderId && (
         <>
           <p role="status" className="text-sm text-b-400">
-            결제 요청을 확인하고 있어요.
+            {recoveryMissing
+              ? '결제 요청을 찾지 못했어요. 다시 확인하거나, 결제창을 열지 않았다면 다른 상품을 선택해 주세요.'
+              : '결제 요청을 확인하고 있어요.'}
           </p>
-
-          {history.data?.items.map((item) => (
-            <button
-              key={item.orderId}
-              type="button"
-              onClick={() => chooseOrder(item)}
-              className="rounded-2xl bg-n-900 p-4 text-left"
-            >
-              <span className="block">
-                {item.productName} · {item.price.toLocaleString('ko-KR')}원
-              </span>
-
-              <span className="mt-1 block text-xs">
-                {new Date(item.createdAt).toLocaleString('ko-KR')} · {orderLabels[item.state]}
-              </span>
-            </button>
-          ))}
-
-          {history.data?.items.length === 0 && (
-            <p className="text-sm text-b-400">
-              결제 요청 상태를 확인할 수 없어요. 다시 조회해 주세요.
-            </p>
-          )}
         </>
       )}
 
@@ -358,6 +450,12 @@ export default function CreditCharge({
 
                 {order.data.state === 'PAID' && !order.data.creditGranted && (
                   <p className="mt-2 text-sm">토큰 지급을 확인하고 있어요.</p>
+                )}
+
+                {orderPollingExpired && !paid && !stoppedStates.includes(order.data.state) && (
+                  <p className="mt-2 text-sm text-b-400">
+                    확인이 늦어지고 있어요. 잠시 후 다시 확인을 눌러 주세요.
+                  </p>
                 )}
 
                 {url && (
@@ -395,7 +493,7 @@ export default function CreditCharge({
             if (orderId) {
               void order.refetch();
             } else {
-              void history.refetch();
+              void recovery.refetch();
             }
 
             void balance.refetch();
@@ -405,7 +503,7 @@ export default function CreditCharge({
         </SecondaryButton>
       )}
 
-      {(terminal || paid) && (
+      {(terminal || paid || (recoveryMissing && !orderId)) && (
         <SecondaryButton disabled={busy} onClick={clearTerminalOrder}>
           {paid ? '추가 충전하기' : '다른 충전 상품 선택'}
         </SecondaryButton>
