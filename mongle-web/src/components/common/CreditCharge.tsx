@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Navigate, useSearchParams } from 'react-router-dom';
@@ -53,7 +53,28 @@ const orderLabels: Record<PaymentOrder['state'], string> = {
   CANCELLED: '결제가 취소되었어요.',
   PAYMENT_REVIEW: '결제 확인이 필요해요. 확인이 끝날 때까지 기다려 주세요.',
   CREDIT_RECLAIMED: '결제가 취소되어 지급 토큰이 회수되었어요.',
+  REFUND_SETTLED: '환불이 완료되었어요.',
 };
+
+// 같은 주문 상태로 이 시간이 지나면 자동 조회를 멈추고 "다시 확인" 버튼으로 수동 조회
+const ORDER_POLL_LIMIT_MS = 60_000;
+
+// key가 같은 상태로 limit만큼 지나면 true (key가 바뀌면 다시 셈)
+function usePollingExpired(key: string | null, limit: number) {
+  const [expiredKey, setExpiredKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!key) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => setExpiredKey(key), limit);
+
+    return () => window.clearTimeout(timer);
+  }, [key, limit]);
+
+  return key !== null && expiredKey === key;
+}
 
 function readPendingRequest(key: string) {
   try {
@@ -102,6 +123,13 @@ export default function CreditCharge({
     retry: false,
   });
 
+  // 같은 주문 상태로 1분이 지나면 자동 조회를 멈추고 수동 조회로 전환 (상태가 바뀌면 다시 자동 조회)
+  const cachedOrder = queryClient.getQueryData<PaymentOrder>(['dream-payments', 'order', orderId]);
+  const orderPollingExpired = usePollingExpired(
+    cachedOrder ? `${cachedOrder.orderId}:${cachedOrder.state}:${cachedOrder.creditGranted}` : null,
+    ORDER_POLL_LIMIT_MS,
+  );
+
   const order = useQuery({
     queryKey: ['dream-payments', 'order', orderId],
     queryFn: ({ signal }) => dreamPaymentApi.order(orderId!, signal),
@@ -109,7 +137,10 @@ export default function CreditCharge({
     retry: false,
     refetchOnWindowFocus: 'always',
     refetchInterval: (query) =>
-      query.state.error || !query.state.data || isPaymentPollingStopped(query.state.data)
+      orderPollingExpired ||
+      query.state.error ||
+      !query.state.data ||
+      isPaymentPollingStopped(query.state.data)
         ? false
         : 3000,
   });
@@ -375,6 +406,12 @@ export default function CreditCharge({
 
                 {order.data.state === 'PAID' && !order.data.creditGranted && (
                   <p className="mt-2 text-sm">토큰 지급을 확인하고 있어요.</p>
+                )}
+
+                {orderPollingExpired && !isPaymentPollingStopped(order.data) && (
+                  <p className="mt-2 text-sm text-b-400">
+                    확인이 늦어지고 있어요. 잠시 후 다시 확인을 눌러 주세요.
+                  </p>
                 )}
 
                 {url && (

@@ -117,6 +117,7 @@ test('완료 조건과 대기·취소·실패·검토·회수 상태를 구분�
     [order({ state: 'REQUEST_REJECTED' }), 'failed', true, true],
     [order({ state: 'PAYMENT_REVIEW' }), 'review', true, false],
     [order({ state: 'CREDIT_RECLAIMED' }), 'reclaimed', true, true],
+    [order({ state: 'REFUND_SETTLED' }), 'refunded', true, true],
   ];
 
   for (const [value, phase, pollingStopped, clearable] of cases) {

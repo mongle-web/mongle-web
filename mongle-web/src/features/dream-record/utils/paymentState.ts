@@ -10,7 +10,8 @@ export type PaymentPhase =
   | 'complete'
   | 'cancelled'
   | 'review'
-  | 'reclaimed';
+  | 'reclaimed'
+  | 'refunded';
 
 export function paymentPhase(order: PaymentOrder | undefined): PaymentPhase | null {
   if (!order) {
@@ -30,6 +31,7 @@ export function paymentPhase(order: PaymentOrder | undefined): PaymentPhase | nu
     CANCELLED: 'cancelled',
     PAYMENT_REVIEW: 'review',
     CREDIT_RECLAIMED: 'reclaimed',
+    REFUND_SETTLED: 'refunded',
   };
 
   return phases[order.state];
@@ -47,7 +49,8 @@ export function isPaymentPollingStopped(order: PaymentOrder | undefined) {
     phase === 'cancelled' ||
     phase === 'failed' ||
     phase === 'review' ||
-    phase === 'reclaimed'
+    phase === 'reclaimed' ||
+    phase === 'refunded'
   );
 }
 
@@ -55,7 +58,11 @@ export function canClearPaymentOrder(order: PaymentOrder | undefined) {
   const phase = paymentPhase(order);
 
   return (
-    phase === 'complete' || phase === 'cancelled' || phase === 'failed' || phase === 'reclaimed'
+    phase === 'complete' ||
+    phase === 'cancelled' ||
+    phase === 'failed' ||
+    phase === 'reclaimed' ||
+    phase === 'refunded'
   );
 }
 

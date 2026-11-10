@@ -27,10 +27,13 @@ export interface PaymentOrder {
     | 'PAID'
     | 'CANCELLED'
     | 'PAYMENT_REVIEW'
-    | 'CREDIT_RECLAIMED';
+    | 'CREDIT_RECLAIMED'
+    | 'REFUND_SETTLED';
   paymentUrl: string | null;
   creditGranted: boolean;
   createdAt: string;
+  // 환불 정산 등으로 확인된 주문 누적 취소액 (확인된 정산이 없으면 null)
+  confirmedCancellationAmount: number | null;
 }
 
 export interface OrderRequest {
